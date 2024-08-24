@@ -1,3 +1,8 @@
+/*
+ * Html element type declarations
+ * 08/23/2024
+ */
+
 #ifndef HTML_TOKEN_MODULE
 #define HTML_TOKEN_MODULE
 
