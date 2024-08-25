@@ -41,6 +41,10 @@ filebuffer* loadfile(const char* filename) {
     fb->data[i] = '\0';
     return fb;
 }
+void filebuffer_destroy(filebuffer* fb) {
+    free(fb->data);
+    free(fb);
+}
 
 
 int main(int argc, char* argv[]) {
@@ -49,6 +53,7 @@ int main(int argc, char* argv[]) {
     if (argc > 1) {
         filebuffer* file = loadfile(argv[1]);
         fprintf(stdout, "Content:\n%s\n", file->data);
+        filebuffer_destroy(file);
     }
 
     return EXIT_SUCCESS;
