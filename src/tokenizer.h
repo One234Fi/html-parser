@@ -73,11 +73,7 @@ struct TOKEN_STRUCT {
     enum TOKEN_TYPE type;
 };
 
-struct tokenizer {
-    bool parser_pause_flag;
-};
-
-enum TOKENIZER_STATE_TYPES {
+enum TOKENIZER_STATE_TYPE {
     DATA_STATE,
     RCDATA_STATE,
     RAWTEXT_STATE,
@@ -158,6 +154,11 @@ enum TOKENIZER_STATE_TYPES {
     HEXADECIMAL_CHARACTER_REFERENCE_STATE,
     DECIMAL_CHARACTER_REFERENCE_STATE,
     NUMERIC_CHARACTER_REFERENCE_END_STATE,
+};
+
+struct tokenizer {
+    bool parser_pause_flag;
+    enum TOKENIZER_STATE_TYPE current_state;
 };
 
 #endif
