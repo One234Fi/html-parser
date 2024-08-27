@@ -3,15 +3,14 @@
  */
 
 #include "tokenizer.h"
+#include "error.h"
 #include <ctype.h>
 #include <stdio.h>
 
+
 static struct tokenizer tokenizer;
 
-void log_error(char* str);
-
 #define UNICODE_REPLACEMENT_CHAR '0xEF' 
-
 
 int consume();
 int reconsume(int c);
@@ -191,7 +190,7 @@ void execute() {
         case HEXADECIMAL_CHARACTER_REFERENCE_STATE: hexadecimal_character_reference_state(); break;
         case DECIMAL_CHARACTER_REFERENCE_STATE: decimal_character_reference_state(); break;
         case NUMERIC_CHARACTER_REFERENCE_END_STATE: numeric_character_reference_end_state(); break;
-        default: fprintf(stderr, "Tokenizer: State: Invlid or unsupported state: %d\n", tokenizer.current_state);
+        default: log_error(INVALID_TOKENIZER_STATE_ERROR);
     }
 }
 
@@ -206,7 +205,7 @@ void data_state() {
             set_state(TAG_OPEN_STATE); 
             break;
         case '\0':
-            log_error("Unexpected null character parse error");
+            log_error(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR);
             emit_token(CHARACTER, c);
             break;
         case EOF:
@@ -228,7 +227,7 @@ void rcdata_state() {
             set_state(RCDATA_LESS_THAN_SIGN_STATE);
             break;
         case '\0':
-            log_error("Unexpected null character parse error");
+            log_error(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR);
             emit_token(CHARACTER, UNICODE_REPLACEMENT_CHAR); 
             break;
         case EOF:
@@ -246,7 +245,7 @@ void rawtext_state() {
             set_state(RAWTEXT_LESS_THAN_SIGN_STATE);
             break;
         case '\0':
-            log_error("Unexpected null character parse error");
+            log_error(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR);
             emit_token(CHARACTER, UNICODE_REPLACEMENT_CHAR); 
             break;
         case EOF:
@@ -264,7 +263,7 @@ void script_data_state() {
             set_state(SCRIPT_DATA_LESS_THAN_SIGN_STATE);
             break;
         case '\0':
-            log_error("Unexpected null character parse error");
+            log_error(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR);
             emit_token(CHARACTER, UNICODE_REPLACEMENT_CHAR); 
             break;
         case EOF:
@@ -279,7 +278,7 @@ void plaintext_state() {
     int c = consume();
     switch(c) {
         case '\0':
-            log_error("Unexpected null character parse error");
+            log_error(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR);
             emit_token(CHARACTER, UNICODE_REPLACEMENT_CHAR); 
             break;
         case EOF:
@@ -300,13 +299,13 @@ void tag_open_state() {
             set_state(END_TAG_OPEN_STATE);
             break;
         case '?':
-            log_error("Unexpected questions mark instead of tag name parse error");
+            log_error(UNEXPECTED_QUESTION_MARK_INSTEAD_OF_TAG_NAME_PARSE_ERROR);
             create_token(COMMENT);
             reconsume(c);
             set_state(BOGUS_COMMENT_STATE);
             break;
         case EOF:
-            log_error("End of file before tag name parse error");
+            log_error(EOF_BEFORE_TAG_NAME_PARSE_ERROR);
             emit_token(CHARACTER, '<');
             emit_token(END_OF_FILE, EOF);
             break;
@@ -317,7 +316,7 @@ void tag_open_state() {
                 set_state(TAG_NAME_STATE);
                 return;
             } else {
-                log_error("Invalid first character of tag name parse error");
+                log_error(INVALID_FIRST_CHARACTER_OF_TAG_NAME_PARSE_ERROR);
                 emit_token(CHARACTER, '<');
                 reconsume(c);
                 set_state(DATA_STATE);
@@ -329,11 +328,11 @@ void end_tag_open_state() {
     int c = consume();
     switch(c) {
         case '>':
-            log_error("Missing end tag name parse error");
+            log_error(MISSING_END_TAG_NAME_PARSE_ERROR);
             set_state(DATA_STATE);
             break;
         case EOF:
-            log_error("End of file before tag name parse error");
+            log_error(EOF_BEFORE_TAG_NAME_PARSE_ERROR);
             emit_token(CHARACTER, '/');
             emit_token(END_OF_FILE, EOF);
             break;
@@ -343,7 +342,7 @@ void end_tag_open_state() {
                 reconsume(c);
                 set_state(TAG_NAME_STATE);
             } else {
-                log_error("Invalid first character of tag name parse error");
+                log_error(INVALID_FIRST_CHARACTER_OF_TAG_NAME_PARSE_ERROR);
                 create_token(COMMENT);
                 reconsume(c);
                 set_state(BOGUS_COMMENT_STATE);
@@ -368,11 +367,11 @@ void tag_name_state() {
             emit_current_token(); //emit current tag token
             break;
         case '\0':
-            log_error("Unexpected null character parse error");
+            log_error(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR);
             //append UNICODE_REPLACEMENT_CHAR to current tag token's tag name
             break;
         case EOF:
-            log_error("End of file in tag parse error");
+            log_error(EOF_IN_TAG_PARSE_ERROR);
             emit_token(END_OF_FILE, c);
             break;
         default:
@@ -580,11 +579,11 @@ void script_data_escaped_state() {
             set_state(SCRIPT_DATA_ESCAPED_LESS_THAN_SIGN_STATE);
             break;
         case '\0':
-            log_error("Unexpected null character parse error");
+            log_error(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR);
             emit_token(CHARACTER, UNICODE_REPLACEMENT_CHAR);
             break;
         case EOF: 
-            log_error("End of file in script html comment like text parse error");
+            log_error(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR);
             emit_token(END_OF_FILE, EOF);
             break;
         default:
@@ -602,12 +601,12 @@ void script_data_escaped_dash_state() {
             set_state(SCRIPT_DATA_ESCAPED_LESS_THAN_SIGN_STATE);
             break;
         case '\0':
-            log_error("Unexpected null character parse error");
+            log_error(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR);
             set_state(SCRIPT_DATA_ESCAPED_STATE);
             emit_token(CHARACTER, UNICODE_REPLACEMENT_CHAR);
             break;
         case EOF: 
-            log_error("End of file in script html comment like text parse error");
+            log_error(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR);
             emit_token(END_OF_FILE, EOF);
             break;
         default:
@@ -630,12 +629,12 @@ void script_data_escaped_dash_dash_state() {
             emit_token(CHARACTER, '>');
             break;
         case '\0':
-            log_error("Unexpected null character parse error");
+            log_error(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR);
             set_state(SCRIPT_DATA_ESCAPED_STATE);
             emit_token(CHARACTER, UNICODE_REPLACEMENT_CHAR);
             break;
         case EOF: 
-            log_error("End of file in script html comment like text parse error");
+            log_error(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR);
             emit_token(END_OF_FILE, EOF);
             break;
         default:
