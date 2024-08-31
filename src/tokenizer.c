@@ -39,6 +39,8 @@ char peek_one();
 bool adjusted_current_node();
 bool in_html_namespace();
 void set_doctype_token_force_quirks_flag (bool b);
+void set_current_token_identifier(const char* val, size_t len);
+void append_to_current_tag_token_identifier(int c);
 
 /* 
  * attribute name needs to be compared against already created attribute names, 
@@ -1524,17 +1526,17 @@ void after_doctype_name_state() {
         case '\f':
         case ' ':
             // intentionally ignore character
-            break;
+            return;
         case '>':
             set_state(DATA_STATE);
             emit_current_token(); // TODO: should be doctype token
-            break;
+            return;
         case EOF:
             log_error(EOF_IN_DOCTYPE_PARSE_ERROR);
             set_doctype_token_force_quirks_flag(true);
             emit_current_token(); // TODO: doctype token
             emit_token(END_OF_FILE, EOF);
-            break;
+            return;
     }
 
     char buf[6] = {};
@@ -1565,4 +1567,305 @@ void after_doctype_name_state() {
     set_doctype_token_force_quirks_flag(true);
     reconsume(c);
     set_state(BOGUS_DOCTYPE_STATE);
+}
+
+void after_doctype_public_keyword_state() {
+    int c = consume();
+    switch (c) {
+        case '\t':
+        case '\n':
+        case '\f':
+        case ' ':
+            set_state(BEFORE_DOCTYPE_PUBLIC_IDENTIFIER_STATE);
+            break;
+        case '"':
+            log_error(MISSING_WHITESPACE_AFTER_DOCTYPE_PUBLIC_KEYWORD_PARSE_ERROR);
+            set_current_token_identifier("", 0);
+            set_state(DOCTYPE_PUBLIC_IDENTIFIER_DOUBLE_QUOTED_STATE);
+            break;
+        case '\'':
+            log_error(MISSING_WHITESPACE_AFTER_DOCTYPE_PUBLIC_KEYWORD_PARSE_ERROR);
+            set_current_token_identifier("", 0);
+            set_state(DOCTYPE_PUBLIC_IDENTIFIER_SINGLE_QUOTED_STATE);
+            break;
+        case '>':
+            log_error(MISSING_DOCTYPE_PUBLIC_IDENTIFIER_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            set_state(DATA_STATE);
+            emit_current_token(); //TODO: Should be doctype
+            break;
+        case EOF:
+            log_error(EOF_IN_DOCTYPE_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            emit_current_token(); // TODO: doctype token
+            emit_token(END_OF_FILE, EOF);
+            break;
+        default:
+            log_error(MISSING_QUOTE_BEFORE_DOCTYPE_PUBLIC_IDENTIFIER_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            reconsume(c);
+            set_state(BOGUS_DOCTYPE_STATE);
+    }
+}
+
+void before_doctype_public_identifier_state() {
+    int c = consume();
+    switch (c) {
+        case '\t':
+        case '\n':
+        case '\f':
+        case ' ':
+            //intentionally ignore character
+            break;
+        case '"':
+            set_current_token_identifier("", 0);
+            set_state(DOCTYPE_PUBLIC_IDENTIFIER_DOUBLE_QUOTED_STATE);
+            break;
+        case '\'':
+            set_current_token_identifier("", 0);
+            set_state(DOCTYPE_PUBLIC_IDENTIFIER_SINGLE_QUOTED_STATE);
+            break;
+        case '>':
+            log_error(MISSING_DOCTYPE_PUBLIC_IDENTIFIER_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            set_state(DATA_STATE);
+            emit_current_token(); //TODO: Should be doctype
+            break;
+        case EOF:
+            log_error(EOF_IN_DOCTYPE_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            emit_current_token(); // TODO: doctype token
+            emit_token(END_OF_FILE, EOF);
+            break;
+        default:
+            log_error(MISSING_QUOTE_BEFORE_DOCTYPE_PUBLIC_IDENTIFIER_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            reconsume(c);
+            set_state(BOGUS_DOCTYPE_STATE);
+    }
+}
+
+void doctype_public_identifer_double_quoted_state() {
+    int c = consume();
+    switch (c) {
+        case '"':
+            set_state(AFTER_DOCTYPE_PUBLIC_IDENTIFIER_STATE);
+            break;
+        case '>':
+            log_error(ABRUPT_CLOSING_OF_EMPTY_COMMENT_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            set_state(DATA_STATE);
+            emit_current_token(); //TODO: should be doctype
+            break;
+        case EOF:
+            log_error(EOF_IN_DOCTYPE_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            emit_current_token(); //TODO: should be doctype
+            emit_token(END_OF_FILE, EOF);
+            break;
+        default:
+            append_to_current_tag_token_identifier(c);
+    }
+}
+
+void doctype_public_identifier_single_quoted_state() {
+    int c = consume();
+    switch (c) {
+        case '"':
+            set_state(AFTER_DOCTYPE_PUBLIC_IDENTIFIER_STATE);
+            break;
+        case '\0':
+            log_error(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR);
+            append_to_current_tag_token_identifier(UNICODE_REPLACEMENT_CHAR);
+            break;
+        case '>':
+            log_error(ABRUPT_DOCTYPE_PUBLIC_IDENTIFIER_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            set_state(DATA_STATE);
+            emit_current_token(); //TODO: doctype
+            break;
+        case EOF:
+            log_error(EOF_IN_DOCTYPE_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            emit_current_token(); //TODO: should be doctype
+            emit_token(END_OF_FILE, EOF);
+            break;
+        default:
+            append_to_current_tag_token_identifier(c);
+    }
+}
+
+void after_doctype_public_identifier_state() {
+    int c = consume();
+    switch (c) {
+        case '\t':
+        case '\n':
+        case '\f':
+        case ' ':
+            set_state(BETWEEN_DOCTYPE_PUBLIC_AND_SYSTEM_IDENTIFIERS_STATE);
+            break;
+        case '>':
+            set_state(DATA_STATE);
+            emit_current_token(); //TODO: doctype
+            break;
+        case '"':
+            log_error(MISSING_WHITESPACE_BETWEEN_DOCTYPE_PUBLIC_AND_SYSTEM_IDENTIFIERS_PARSE_ERROR);
+            set_current_token_identifier("", 0);
+            set_state(DOCTYPE_SYSTEM_IDENTIFIER_DOUBLE_QUOTED_STATE);
+            break;
+        case '\'':
+            log_error(MISSING_WHITESPACE_BETWEEN_DOCTYPE_PUBLIC_AND_SYSTEM_IDENTIFIERS_PARSE_ERROR);
+            set_current_token_identifier("", 0);
+            set_state(DOCTYPE_SYSTEM_IDENTIFIER_SINGLE_QUOTED_STATE);
+            break;
+        case EOF:
+            log_error(EOF_IN_DOCTYPE_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            emit_current_token(); //TODO: should be doctype
+            emit_token(END_OF_FILE, EOF);
+            break;
+        default:
+            log_error(MISSING_QUOTE_BEFORE_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            reconsume(c);
+            set_state(BOGUS_DOCTYPE_STATE);
+    }
+}
+
+void between_doctype_public_and_system_identifiers_state() {
+    int c = consume();
+    switch (c) {
+        case '\t':
+        case '\n':
+        case '\f':
+        case ' ':
+            // intentionally ignore character
+            break;
+        case '>':
+            set_state(DATA_STATE);
+            emit_current_token(); //TODO: doctype
+            break;
+        case '"':
+            set_current_token_identifier("", 0);
+            set_state(DOCTYPE_SYSTEM_IDENTIFIER_DOUBLE_QUOTED_STATE);
+            break;
+        case '\'':
+            set_current_token_identifier("", 0);
+            set_state(DOCTYPE_SYSTEM_IDENTIFIER_SINGLE_QUOTED_STATE);
+            break;
+        case EOF:
+            log_error(EOF_IN_DOCTYPE_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            emit_current_token(); //TODO: should be doctype
+            emit_token(END_OF_FILE, EOF);
+            break;
+        default:
+            log_error(MISSING_QUOTE_BEFORE_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            reconsume(c);
+            set_state(BOGUS_DOCTYPE_STATE);
+    }
+}
+
+void after_doctype_system_keyword_state() {
+    int c = consume();
+    switch (c) {
+        case '\t':
+        case '\n':
+        case '\f':
+        case ' ':
+            set_state(BEFORE_DOCTYPE_SYSTEM_IDENTIFIER_STATE);
+            break;
+        case '"':
+            log_error(MISSING_WHITESPACE_AFTER_DOCTYPE_SYSTEM_KEYWORD_PARSE_ERROR);
+            set_current_token_identifier("", 0);
+            set_state(DOCTYPE_SYSTEM_IDENTIFIER_DOUBLE_QUOTED_STATE);
+            break;
+        case '\'':
+            log_error(MISSING_WHITESPACE_AFTER_DOCTYPE_SYSTEM_KEYWORD_PARSE_ERROR);
+            set_current_token_identifier("", 0);
+            set_state(DOCTYPE_SYSTEM_IDENTIFIER_SINGLE_QUOTED_STATE);
+            break;
+        case '>':
+            log_error(MISSING_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            emit_current_token(); //TODO: doctype
+            break;
+        case EOF:
+            log_error(EOF_IN_DOCTYPE_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            emit_current_token(); //TODO: should be doctype
+            emit_token(END_OF_FILE, EOF);
+            break;
+        default:
+            log_error(MISSING_QUOTE_BEFORE_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            reconsume(c);
+            set_state(BOGUS_DOCTYPE_STATE);
+    }
+}
+
+void before_doctype_system_identifier_state() {
+    int c = consume();
+    switch (c) {
+        case '\t':
+        case '\n':
+        case '\f':
+        case ' ':
+            //intentionally ignore character
+            break;
+        case '"':
+            set_current_token_identifier("", 0);
+            set_state(DOCTYPE_SYSTEM_IDENTIFIER_DOUBLE_QUOTED_STATE);
+            break;
+        case '\'':
+            set_current_token_identifier("", 0);
+            set_state(DOCTYPE_SYSTEM_IDENTIFIER_SINGLE_QUOTED_STATE);
+            break;
+        case '>':
+            log_error(MISSING_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            set_state(DATA_STATE);
+            emit_current_token(); //TODO: doctype
+            break;
+        case EOF:
+            log_error(EOF_IN_DOCTYPE_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            emit_current_token(); //TODO: doctype
+            emit_token(END_OF_FILE, EOF);
+            break;
+        default:
+            log_error(MISSING_QUOTE_BEFORE_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            reconsume(c);
+            set_state(BOGUS_DOCTYPE_STATE);
+            break;
+    }
+}
+
+void doctype_system_identifier_double_quoted_state() {
+    int c = consume();
+    switch (c) {
+        case '"':
+            set_state(AFTER_DOCTYPE_SYSTEM_IDENTIFIER_STATE);
+            break;
+        case '\0':
+            log_error(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR);
+            append_to_current_tag_token_identifier(UNICODE_REPLACEMENT_CHAR);
+            break;
+        case '>':
+            log_error(ABRUPT_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            set_state(DATA_STATE);
+            emit_current_token(); //TODO: doctype
+            break;
+        case EOF:
+            log_error(EOF_IN_DOCTYPE_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            emit_current_token(); //TODO: doctype
+            emit_token(END_OF_FILE, EOF);
+            break;
+        default:
+            append_to_current_tag_token_identifier(c);
+    }
 }
