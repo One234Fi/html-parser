@@ -41,6 +41,11 @@ bool in_html_namespace();
 void set_doctype_token_force_quirks_flag (bool b);
 void set_current_token_identifier(const char* val, size_t len);
 void append_to_current_tag_token_identifier(int c);
+void return_state();
+bool is_named_character(int c);
+bool is_part_of_an_attribute();
+void interpret_character_reference_name();
+
 
 /* 
  * attribute name needs to be compared against already created attribute names, 
@@ -48,6 +53,11 @@ void append_to_current_tag_token_identifier(int c);
  * new attribute needs to be removed from the token
  */
 void check_for_duplicate_attributes();
+
+
+//for int i in temp buffer, append i to current attribute
+void flush_code_points();
+ 
 
 //state handlers
 void data_state();
@@ -1867,5 +1877,180 @@ void doctype_system_identifier_double_quoted_state() {
             break;
         default:
             append_to_current_tag_token_identifier(c);
+    }
+}
+
+void doctype_system_identifier_single_quoted_state() {
+    int c = consume();
+    switch (c) {
+        case '\'':
+            set_state(AFTER_DOCTYPE_SYSTEM_IDENTIFIER_STATE);
+            break;
+        case '\0':
+            log_error(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR);
+            append_to_current_tag_token_identifier(UNICODE_REPLACEMENT_CHAR);
+            break;
+        case '>':
+            log_error(ABRUPT_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            set_state(DATA_STATE);
+            emit_current_token(); //TODO: doctype
+            break;
+        case EOF:
+            log_error(EOF_IN_DOCTYPE_PARSE_ERROR);
+            set_doctype_token_force_quirks_flag(true);
+            emit_current_token(); //TODO: doctype
+            emit_token(END_OF_FILE, EOF);
+            break;
+        default:
+            append_to_current_tag_token_identifier(c);
+    }
+}
+
+void after_doctype_system_identifier_state() {
+    int c = consume();
+    switch (c) {
+        case '\t':
+        case '\n':
+        case '\f':
+        case ' ':
+            //intentionally ignore character
+            break;
+        case '>':
+            set_state(DATA_STATE);
+            emit_current_token(); //TODO: doctype
+            break;
+        default:
+            log_error(UNEXPECTED_CHARACTER_AFTER_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR);
+            reconsume(c);
+            set_state(BOGUS_DOCTYPE_STATE);
+    }
+}
+
+void bogus_doctype_state() {
+    int c = consume();
+    switch (c) {
+        case '>':
+            set_state(DATA_STATE);
+            emit_token(DOCTYPE, 0);
+            break;
+        case '\0':
+            log_error(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR);
+            // intentionally ignore character
+            break;
+        case EOF:
+            emit_token(DOCTYPE, 0);
+            emit_token(END_OF_FILE, EOF);
+            break;
+            // otherwise intentionally ignore character
+    }
+}
+
+void cdata_section_state() {
+    int c = consume();
+    switch (c) {
+        case ']':
+            set_state(CDATA_SECTION_BRACKET_STATE);
+            break;
+        case EOF:
+            log_error(EOF_IN_CDATA_PARSE_ERROR);
+            emit_token(END_OF_FILE, EOF);
+            break;
+        default:
+            emit_token(CHARACTER, c);
+    }
+}
+
+void cdata_section_bracket_state() {
+    int c = consume();
+    switch (c) {
+        case ']':
+            set_state(CDATA_SECTION_END_STATE);
+            break;
+        default:
+            emit_token(CHARACTER, ']');
+            reconsume(c);
+            set_state(CDATA_SECTION_STATE);
+    }
+}
+
+void cdata_section_end_state() {
+    int c = consume();
+    switch (c) {
+        case ']':
+            emit_token(CHARACTER, ']');
+            break;
+        case '>':
+            set_state(DATA_STATE);
+            break;
+        default:
+            emit_token(CHARACTER, ']');
+            emit_token(CHARACTER, ']');
+            reconsume(c);
+            set_state(CDATA_SECTION_STATE);
+    }
+}
+
+void character_reference_state() {
+    clear_temporary_buffer();
+    append_to_temp_buffer('&');
+    int c = consume();
+    switch (c) {
+        case '#':
+            append_to_temp_buffer(c);
+            set_state(NUMERIC_CHARACTER_REFERENCE_STATE);
+            break;
+        default:
+            if (isalpha(c)) {
+                reconsume(c);
+                set_state(NAMED_CHARACTER_REFERENCE_STATE);
+            } else {
+                flush_code_points();
+                reconsume(c);
+                return_state();
+            }
+    }
+}
+
+//TODO: double check the logic of this one 
+void named_character_reference_state() {
+    while (is_named_character(peek_one())) {
+        int c = consume();
+        append_to_temp_buffer(c);
+
+        if (is_part_of_an_attribute() 
+                && c != ';' 
+                && !isalnum(c)
+                && (peek_one() == '=' || isalnum(peek_one()) )) {
+            flush_code_points();
+            return_state();
+            return;
+        } else {
+            if (c != ';') {
+                log_error(MISSING_SEMICOLON_AFTER_CHARACTER_REFERENCE_PARSE_ERROR);
+            }
+            clear_temporary_buffer();
+            interpret_character_reference_name();
+            flush_code_points();
+            return_state();
+            return;
+        }
+    }
+    flush_code_points();
+    set_state(AMBIGUOUS_AMPERSAND_STATE);
+}
+
+//TODO:
+void ambiguous_ampersand_state() {
+    int c = consume();
+    if (isalnum(c)) {
+        if (is_part_of_an_attribute()) {
+            append_to_current_tag_token_attribute_value(c);
+        } else {
+            emit_token(CHARACTER, c);
+        }
+    }
+    else if (c == ';') {
+        log_error(UNKNOWN_NAMED_CHARACTER_REFERENCE_PARSE_ERROR);
     }
 }
