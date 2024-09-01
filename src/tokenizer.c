@@ -45,7 +45,11 @@ void return_state();
 bool is_named_character(int c);
 bool is_part_of_an_attribute();
 void interpret_character_reference_name();
-
+void set_character_reference_code(int c);
+int get_character_reference_code();
+bool is_hex_ascii(int c);
+bool is_surrogate(int c);
+bool is_noncharacter(int c);
 
 /* 
  * attribute name needs to be compared against already created attribute names, 
@@ -2040,7 +2044,6 @@ void named_character_reference_state() {
     set_state(AMBIGUOUS_AMPERSAND_STATE);
 }
 
-//TODO:
 void ambiguous_ampersand_state() {
     int c = consume();
     if (isalnum(c)) {
@@ -2049,8 +2052,149 @@ void ambiguous_ampersand_state() {
         } else {
             emit_token(CHARACTER, c);
         }
-    }
-    else if (c == ';') {
+    } else if (c == ';') {
         log_error(UNKNOWN_NAMED_CHARACTER_REFERENCE_PARSE_ERROR);
+        reconsume(c);
+        return_state();
+    } else {
+        reconsume(c);
+        return_state();
+    }
+}
+
+void numeric_character_reference_state() {
+    set_character_reference_code(0);
+    int c = consume();
+    switch (c) {
+        case 'x':
+        case 'X':
+            append_to_temp_buffer(c);
+            set_state(HEXADECIMAL_CHARACTER_REFERENCE_START_STATE);
+            break;
+        default:
+            reconsume(c);
+            set_state(DECIMAL_CHARACTER_REFERENCE_START_STATE);
+    }
+}
+
+void hexadecimal_character_reference_start_state() {
+    int c = consume();
+    if (is_hex_ascii(c)) {
+        reconsume(c);
+        set_state(HEXADECIMAL_CHARACTER_REFERENCE_START_STATE);
+    } else {
+        log_error(ABSENCE_OF_DIGITS_IN_NUMERIC_CHARACTER_REFERENCE_PARSE_ERROR);
+        flush_code_points();
+        reconsume(c);
+        return_state();
+    }
+}
+
+void decimal_character_reference_start_state() {
+    int c = consume();
+    if (isdigit(c)) {
+        reconsume(c);
+        set_state(DECIMAL_CHARACTER_REFERENCE_STATE);
+    } else {
+        log_error(ABSENCE_OF_DIGITS_IN_NUMERIC_CHARACTER_REFERENCE_PARSE_ERROR);
+        flush_code_points();
+        reconsume(c);
+        return_state();
+    }
+}
+
+void hexadecimal_character_reference_state() {
+    int c = consume();
+    if (isdigit(c)) {
+        int curr_as_numeric = c - 0x0030;
+        int ref_code = get_character_reference_code() * 16;
+        ref_code += curr_as_numeric;
+        set_character_reference_code(ref_code);
+    } else if (isupper(c)) {
+        int curr_as_numeric = c - 0x0037;
+        int ref_code = get_character_reference_code() * 16;
+        ref_code += curr_as_numeric;
+        set_character_reference_code(ref_code);
+    } else if (islower(c)) {
+        int curr_as_numeric = c - 0x0057;
+        int ref_code = get_character_reference_code() * 16;
+        ref_code += curr_as_numeric;
+        set_character_reference_code(ref_code);
+    } else if (c == ';') {
+        set_state(NUMERIC_CHARACTER_REFERENCE_STATE);
+    } else {
+        log_error(MISSING_SEMICOLON_AFTER_CHARACTER_REFERENCE_PARSE_ERROR);
+        reconsume(c);
+        set_state(NUMERIC_CHARACTER_REFERENCE_END_STATE);
+    }
+}
+
+void decimal_character_reference_state() {
+    int c = consume();
+    if (isalpha(c)) {
+        int curr_as_numeric = c - 0x0030;
+        int ref_code = get_character_reference_code() * 10;
+        ref_code += curr_as_numeric;
+    } else if (c == ';') {
+        set_state(NUMERIC_CHARACTER_REFERENCE_END_STATE);
+    } else {
+        log_error(MISSING_SEMICOLON_AFTER_CHARACTER_REFERENCE_PARSE_ERROR);
+        reconsume(c);
+        set_state(NUMERIC_CHARACTER_REFERENCE_END_STATE);
+    }
+}
+
+void numeric_character_reference_end_state() {
+    int char_ref = get_character_reference_code();
+    if (char_ref == 0x00) {
+        log_error(NULL_CHARACTER_REFERENCE_PARSE_ERROR);
+        set_character_reference_code(0xFFFD);
+    } else if (char_ref > 0x10FFFF) {
+        log_error(CHARACTER_REFERENCE_OUTSIDE_OF_UNICODE_RANGE_PARSE_ERROR);
+        set_character_reference_code(0xFFFD);
+    } else if (is_surrogate(char_ref)) {
+        log_error(SURROGATE_CHARACTER_REFERENCE_PARSE_ERROR);
+        set_character_reference_code(0xFFFD);
+    } else if (is_noncharacter(char_ref)) {
+        log_error(NONCHARACTER_CHARACTER_REFERENCE_PARSE_ERROR);
+    } else if (char_ref == '0x0D' 
+            || (iscntrl(char_ref) && !isspace(char_ref))) {
+        log_error(CONTROL_CHARACTER_REFERENCE_PARSE_ERROR);
+    } else {
+#define map_case(num, code_point) case num: set_character_reference_code(code_point); break
+        switch (char_ref) {
+            map_case(0x80, 0x20AC);
+            map_case(0x82, 0x201A);
+            map_case(0x83, 0x0192);
+            map_case(0x84, 0x201E);
+            map_case(0x85, 0x2026);
+            map_case(0x86, 0x2020);
+            map_case(0x87, 0x2021);
+            map_case(0x88, 0x02C6);
+            map_case(0x89, 0x2030);
+            map_case(0x8A, 0x0160);
+            map_case(0x8B, 0x2039);
+            map_case(0x8C, 0x0152);
+            map_case(0x8E, 0x017D);
+            map_case(0x91, 0x2018);
+            map_case(0x92, 0x2019);
+            map_case(0x93, 0x201C);
+            map_case(0x94, 0x201D);
+            map_case(0x95, 0x2022);
+            map_case(0x96, 0x2013);
+            map_case(0x97, 0x2014);
+            map_case(0x98, 0x02DC);
+            map_case(0x99, 0x2122);
+            map_case(0x9A, 0x0161);
+            map_case(0x9B, 0x203A);
+            map_case(0x9C, 0x0153);
+            map_case(0x9E, 0x017E);
+            map_case(0x9F, 0x0178);
+        }
+#undef map_case
+        clear_temporary_buffer();
+        append_to_temp_buffer(char_ref);
+        flush_code_points();
+        return_state();
     }
 }
