@@ -2079,7 +2079,7 @@ void numeric_character_reference_state() {
 
 void hexadecimal_character_reference_start_state() {
     int c = consume();
-    if (is_hex_ascii(c)) {
+    if (isxdigit(c)) {
         reconsume(c);
         set_state(HEXADECIMAL_CHARACTER_REFERENCE_START_STATE);
     } else {
@@ -2128,6 +2128,7 @@ void hexadecimal_character_reference_state() {
         set_state(NUMERIC_CHARACTER_REFERENCE_END_STATE);
     }
 }
+
 
 void decimal_character_reference_state() {
     int c = consume();
