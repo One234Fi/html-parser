@@ -347,7 +347,7 @@ void tag_open_state() {
             emit_token(END_OF_FILE, EOF);
             break;
         default:
-            if (isalpha(c)) {
+            if (is_ascii_alpha(c)) {
                 create_token(START_TAG);
                 reconsume(c);
                 set_state(TAG_NAME_STATE);
@@ -374,7 +374,7 @@ void end_tag_open_state() {
             emit_token(END_OF_FILE, EOF);
             break;
         default:
-            if (isalpha(c)) {
+            if (is_ascii_alpha(c)) {
                 create_token(END_TAG);
                 reconsume(c);
                 set_state(TAG_NAME_STATE);
@@ -405,14 +405,14 @@ void tag_name_state() {
             break;
         case '\0':
             log_error(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR);
-            //append UNICODE_REPLACEMENT_CHAR to current tag token's tag name
+            append_to_current_tag_token_name(UNICODE_REPLACEMENT_CHAR);
             break;
         case EOF:
             log_error(EOF_IN_TAG_PARSE_ERROR);
             emit_token(END_OF_FILE, c);
             break;
         default:
-            if (isalpha(c)) {
+            if (is_ascii_upper_alpha(c)) {
                 append_to_current_tag_token_name(tolower(c));
             } else {
                 append_to_current_tag_token_name(c);
@@ -434,7 +434,7 @@ void rcdata_less_than_sign_state() {
 
 void rcdata_end_tag_open_state() {
     int c = consume();
-    if (isalpha(c)) {
+    if (is_ascii_alpha(c)) {
         create_token(END_TAG);
         reconsume(c);
         set_state(RCDATA_END_TAG_NAME_STATE);
@@ -486,10 +486,10 @@ void rcdata_end_tag_name_state() {
             }
             break;
         default:
-            if (isalpha(c) && isupper(c)) {
+            if (is_ascii_upper_alpha(c)) {
                 append_to_current_tag_token_name(tolower(c));
                 append_to_temp_buffer(c);
-            } else if (isalpha(c) && islower(c)) {
+            } else if (is_ascii_lower_alpha(c)) {
                 append_to_current_tag_token_name(c);
                 append_to_temp_buffer(c);
             } else {
@@ -655,10 +655,10 @@ void script_data_end_tag_name_state() {
             }
             break;
         default:
-            if (isalpha(c) && isupper(c)) {
+            if (is_ascii_upper_alpha(c)) {
                 append_to_current_tag_token_name(tolower(c));
                 append_to_temp_buffer(c);
-            } else if (isalpha(c) && islower(c)) {
+            } else if (is_ascii_lower_alpha(c)) {
                 append_to_current_tag_token_name(c);
                 append_to_temp_buffer(c);
             } else {
@@ -776,7 +776,7 @@ void script_data_escaped_less_than_sign_state() {
             set_state(SCRIPT_DATA_ESCAPED_END_TAG_OPEN_STATE);
             break;
         default:
-            if (isalpha(c)) {
+            if (is_ascii_alpha(c)) {
                 clear_temporary_buffer();
                 emit_token(CHARACTER, '<');
                 reconsume(c);
@@ -791,7 +791,7 @@ void script_data_escaped_less_than_sign_state() {
 
 void script_data_escaped_end_tag_open_state() {
     int c = consume();
-    if (isalpha(c)) {
+    if (is_ascii_alpha(c)) {
         create_token(END_TAG);
         reconsume(c);
         set_state(SCRIPT_DATA_ESCAPED_END_TAG_NAME_STATE);
@@ -843,10 +843,10 @@ void script_data_escaped_end_tag_name_state() {
             }
             break;
         default:
-            if (isalpha(c) && isupper(c)) {
+            if (is_ascii_upper_alpha(c)) {
                 append_to_current_tag_token_name(tolower(c));
                 append_to_temp_buffer(c);
-            } else if (isalpha(c) && islower(c)) {
+            } else if (is_ascii_lower_alpha(c)) {
                 append_to_current_tag_token_name(c);
                 append_to_temp_buffer(c);
             } else {
@@ -876,10 +876,10 @@ void script_data_double_escape_start_state() {
             emit_token(CHARACTER, c);
             break;
         default:
-            if (isalpha(c) && isupper(c)) {
+            if (is_ascii_upper_alpha(c)) {
                 append_to_temp_buffer(tolower(c));
                 emit_token(CHARACTER, c);
-            } else if (isalpha(c) && islower(c)) {
+            } else if (is_ascii_lower_alpha(c)) {
                 append_to_temp_buffer(c);
                 emit_token(CHARACTER, c);
             } else {
@@ -999,10 +999,10 @@ void script_data_double_escape_end_state() {
             emit_token(CHARACTER, c);
             break;
         default:
-            if (isalpha(c) && isupper(c)) {
+            if (is_ascii_upper_alpha(c)) {
                 append_to_temp_buffer(tolower(c));
                 emit_token(CHARACTER, c);
-            } else if (isalpha(c) && islower(c)) {
+            } else if (is_ascii_lower_alpha(c)) {
                 append_to_temp_buffer(c);
                 emit_token(CHARACTER, c);
             } else {
@@ -1067,7 +1067,7 @@ void attribute_name_state() {
             append_to_current_tag_token_attribute_name(c);
             break;
         default:
-            if (isalpha(c) && isupper(c)) {
+            if (is_ascii_upper_alpha(c)) {
                 append_to_current_tag_token_attribute_name(tolower(c));
             } else {
                 append_to_current_tag_token_attribute_name(c);
@@ -1576,7 +1576,7 @@ void before_doctype_name_state() {
             emit_token(END_OF_FILE, EOF);
             break;
         default:
-            if (isalpha(c) && isupper(c)) {
+            if (is_ascii_upper_alpha(c)) {
                 create_token(DOCTYPE);
                 append_to_current_tag_token_name(tolower(c));
                 set_state(DOCTYPE_NAME_STATE);
@@ -1612,7 +1612,7 @@ void doctype_name_state() {
             emit_token(END_OF_FILE, EOF);
             break;
         default:
-            if (isalpha(c) && isupper(c)) {
+            if (is_ascii_upper_alpha(c)) {
                 append_to_current_tag_token_name(tolower(c));
             } else {
                 append_to_current_tag_token_name(c);
@@ -2093,7 +2093,7 @@ void character_reference_state() {
             set_state(NUMERIC_CHARACTER_REFERENCE_STATE);
             break;
         default:
-            if (isalpha(c)) {
+            if (is_ascii_alphanumeric(c)) {
                 reconsume(c);
                 set_state(NAMED_CHARACTER_REFERENCE_STATE);
             } else {
@@ -2134,7 +2134,7 @@ void named_character_reference_state() {
 
 void ambiguous_ampersand_state() {
     int c = consume();
-    if (isalnum(c)) {
+    if (is_ascii_alphanumeric(c)) {
         if (is_part_of_an_attribute()) {
             append_to_current_tag_token_attribute_value(c);
         } else {
@@ -2167,7 +2167,7 @@ void numeric_character_reference_state() {
 
 void hexadecimal_character_reference_start_state() {
     int c = consume();
-    if (isxdigit(c)) {
+    if (is_ascii_hex_digit(c)) {
         reconsume(c);
         set_state(HEXADECIMAL_CHARACTER_REFERENCE_START_STATE);
     } else {
@@ -2180,7 +2180,7 @@ void hexadecimal_character_reference_start_state() {
 
 void decimal_character_reference_start_state() {
     int c = consume();
-    if (isdigit(c)) {
+    if (is_ascii_digit(c)) {
         reconsume(c);
         set_state(DECIMAL_CHARACTER_REFERENCE_STATE);
     } else {
@@ -2193,17 +2193,17 @@ void decimal_character_reference_start_state() {
 
 void hexadecimal_character_reference_state() {
     int c = consume();
-    if (isdigit(c)) {
+    if (is_ascii_digit(c)) {
         int curr_as_numeric = c - 0x0030;
         int ref_code = get_character_reference_code() * 16;
         ref_code += curr_as_numeric;
         set_character_reference_code(ref_code);
-    } else if (isupper(c)) {
+    } else if (is_ascii_upper_hex_digit(c)) {
         int curr_as_numeric = c - 0x0037;
         int ref_code = get_character_reference_code() * 16;
         ref_code += curr_as_numeric;
         set_character_reference_code(ref_code);
-    } else if (islower(c)) {
+    } else if (is_ascii_lower_hex_digit(c)) {
         int curr_as_numeric = c - 0x0057;
         int ref_code = get_character_reference_code() * 16;
         ref_code += curr_as_numeric;
@@ -2220,7 +2220,7 @@ void hexadecimal_character_reference_state() {
 
 void decimal_character_reference_state() {
     int c = consume();
-    if (isalpha(c)) {
+    if (is_ascii_digit(c)) {
         int curr_as_numeric = c - 0x0030;
         int ref_code = get_character_reference_code() * 10;
         ref_code += curr_as_numeric;
@@ -2244,10 +2244,10 @@ void numeric_character_reference_end_state() {
     } else if (is_surrogate(char_ref)) {
         log_error(SURROGATE_CHARACTER_REFERENCE_PARSE_ERROR);
         set_character_reference_code(0xFFFD);
-    } else if (is_noncharacter(char_ref)) {
+    } else if (is_non_char(char_ref)) {
         log_error(NONCHARACTER_CHARACTER_REFERENCE_PARSE_ERROR);
     } else if (char_ref == '0x0D' 
-            || (iscntrl(char_ref) && !isspace(char_ref))) {
+            || (is_control(char_ref) && !is_ascii_whitespace(char_ref))) {
         log_error(CONTROL_CHARACTER_REFERENCE_PARSE_ERROR);
     } else {
 #define map_case(num, code_point) case num: set_character_reference_code(code_point); break
