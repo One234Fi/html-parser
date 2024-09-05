@@ -4,6 +4,7 @@
 
 #include "tokenizer.h"
 #include "error.h"
+#include "code_point_types.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
@@ -48,7 +49,6 @@ void interpret_character_reference_name();
 void set_character_reference_code(int c);
 int get_character_reference_code();
 bool is_hex_ascii(int c);
-bool is_surrogate(int c);
 bool is_noncharacter(int c);
 
 /* 
@@ -516,11 +516,99 @@ void rawtext_less_than_sign_state() {
 
 void rawtext_end_tag_open_state() {
     int c = consume();
-    if (isalpha(c)) {
+    if (is_ascii_alpha(c)) {
         create_token(END_TAG);
         reconsume(c);
         set_state(SCRIPT_DATA_END_TAG_NAME_STATE);
     } else {
+        emit_token(CHARACTER, '/');
+        reconsume(c);
+        set_state(SCRIPT_DATA_STATE);
+    }
+}
+
+void rawtext_end_tag_name_state() {
+    int c = consume();
+    switch (c) {
+        case '\t':
+        case '\f':
+        case '\n':
+        case ' ':
+            if (current_token_is_valid()) { //current token should be an end tag
+                set_state(BEFORE_ATTRIBUTE_NAME_STATE);
+            } else {
+                emit_token(CHARACTER, '<');
+                emit_token(CHARACTER, '/');
+                emit_tokens_in_temp_buffer(); 
+                reconsume(c);
+                set_state(RAWTEXT_STATE);
+            }
+            break;
+        case '/':
+            if (current_token_is_valid()) { //current token should be an end tag
+                set_state(SELF_CLOSING_START_TAG_STATE);
+            } else {
+                emit_token(CHARACTER, '<');
+                emit_token(CHARACTER, '/');
+                emit_tokens_in_temp_buffer(); 
+                reconsume(c);
+                set_state(DATA_STATE);
+            }
+            break;
+        case '>':
+            if (current_token_is_valid()) { //current token should be an end tag
+                set_state(DATA_STATE);
+            } else {
+                emit_token(CHARACTER, '<');
+                emit_token(CHARACTER, '/');
+                emit_tokens_in_temp_buffer(); 
+                reconsume(c);
+                set_state(DATA_STATE);
+            }
+            break;
+        default:
+            if (is_ascii_upper_alpha(c)) {
+                append_to_current_tag_token_name(tolower(c));
+                append_to_temp_buffer(c);
+            } else if (is_ascii_lower_alpha(c)) {
+                append_to_current_tag_token_name(c);
+                append_to_temp_buffer(c);
+            } else {
+                emit_token(CHARACTER, '<');
+                emit_token(CHARACTER, '/');
+                emit_tokens_in_temp_buffer(); 
+                reconsume(c);
+                set_state(RAWTEXT_STATE);
+            }
+    }
+}
+
+void script_data_less_than_sign_state() {
+    int c = consume();
+    switch (c) {
+        case '/':
+            clear_temporary_buffer();
+            set_state(SCRIPT_DATA_END_TAG_OPEN_STATE);
+            break;
+        case '!':
+            set_state(SCRIPT_DATA_ESCAPE_START_STATE);
+            emit_token(CHARACTER, '<');
+            emit_token(CHARACTER, '!');
+            break;
+        default:
+            emit_token(CHARACTER, '<');
+            set_state(SCRIPT_DATA_STATE);
+    }
+}
+
+void script_data_end_tag_open_state() {
+    int c = consume();
+    if (is_ascii_alpha(c)) {
+        create_token(END_TAG);
+        reconsume(c);
+        set_state(SCRIPT_DATA_END_TAG_NAME_STATE);
+    } else {
+        emit_token(CHARACTER, '<');
         emit_token(CHARACTER, '/');
         reconsume(c);
         set_state(SCRIPT_DATA_STATE);
