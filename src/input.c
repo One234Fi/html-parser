@@ -18,6 +18,7 @@ static struct input_system input = {};
 static const size_t CHUNK_SIZE = 1024;
 
 void input_system_read_more();
+void normalize_newlines(string_buffer** sb);
 
 
 void input_system_init(const char* filename) {
@@ -40,6 +41,7 @@ void input_system_read_more() {
         input.file_is_open = false;
         fclose(input.f);
     }
+    normalize_newlines(&input.buffer);
 }
 
 void input_system_destroy() {
@@ -85,6 +87,23 @@ const char* input_system_peekn(int num, size_t* out_len) {
 
 char input_system_peek() {
     return string_buffer_get(input.buffer, 0);
+}
+
+void normalize_newlines(string_buffer** sb) {
+    for (size_t i = (*sb)->length; i > 0; i--) {
+        if ((*sb)->data[i] == '\r' && (*sb)->data[i+1] == '\n') {
+            for (size_t j = i; j < (*sb)->length-1; j++) {
+                (*sb)->data[j] = (*sb)->data[j+1];
+            }
+            (*sb)->length -= 1;
+        }
+    }
+
+    for (size_t i = 0; i < (*sb)->length; i++) {
+        if ((*sb)->data[i] == '\r') {
+            (*sb)->data[i] = '\n';
+        }
+    }
 }
 
 
