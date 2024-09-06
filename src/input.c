@@ -2,23 +2,92 @@
  * functions to handle reading input from files
  */
 
+#include "input.h"
 #include <stdio.h>
-#include <stddef.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
-//TODO: this can probably go in a common_util header somewhere
-#define ALLOCATE(ptr, newsize) ptr = realloc(ptr, newsize)
 
-#define STRING_DEFAULT_SIZE 8
-#define STRING_GROWTH_RATE 2
+struct input_system {
+    string_buffer* buffer;
+    FILE* f;
+    bool file_is_open;
+};
 
-#define string_buffer_get(sb, i) sb->data[i]
+static struct input_system input = {};
+static const size_t CHUNK_SIZE = 1024;
 
-typedef struct string_buffer {
-    size_t length;
-    size_t capacity;
-    char* data;
-} string_buffer;
+void input_system_read_more();
+
+
+void input_system_init(const char* filename) {
+    FILE* f;
+    f = fopen(filename, "rb");
+    if (!f) {
+        fprintf(stderr, "INPUT SYSTEM: FAILED TO OPEN FILE\n");
+        return;
+    }
+    input.file_is_open = true;
+    input.f = f;
+
+    input.buffer = string_buffer_init(CHUNK_SIZE);
+    string_buffer_append_chunk(&input.buffer, CHUNK_SIZE, input.f);
+}
+
+void input_system_read_more() {
+    size_t res = string_buffer_append_chunk(&input.buffer, CHUNK_SIZE, input.f);
+    if (res < 0) {
+        input.file_is_open = false;
+        fclose(input.f);
+    }
+}
+
+void input_system_destroy() {
+    if (input.f) {
+        fclose(input.f);
+    }
+    string_buffer_destroy(input.buffer);
+}
+
+int input_system_consume() {
+    if (input.buffer->length <= 1 && input.file_is_open) {
+        input_system_read_more();
+    }
+    return string_buffer_pop_front(&input.buffer);
+}
+
+void input_system_reconsume(int c) {
+    string_buffer_push_front(&input.buffer, c);
+}
+
+/*
+ * returns a mallocd char buffer. Should be freed manually
+ */
+const char* input_system_peekn(int num, size_t* out_len) {
+    if (input.buffer->length <= num && input.file_is_open) {
+        input_system_read_more();
+    }
+
+    char * buf; 
+    ALLOCATE(buf, num);
+    for (size_t i = 0; i < num; i++) {
+        int c = string_buffer_get(input.buffer, i);
+        buf[i] = c;
+        if (c == EOF) {
+            *out_len = i;
+            return buf;
+        }
+    }
+
+    *out_len = num;
+    return buf;
+}
+
+char input_system_peek() {
+    return string_buffer_get(input.buffer, 0);
+}
+
+
 
 /*
  * size: the desired initial size (in datatype units)
@@ -28,13 +97,13 @@ string_buffer* string_buffer_init(size_t size) {
     string_buffer* sb = NULL;
     ALLOCATE(sb, sizeof(string_buffer));
     if (!sb) {
-        fprintf(stderr, "string_buffer_init(): \"struct malloc failed\"");
+        fprintf(stderr, "string_buffer_init(): \"struct malloc failed\"\n");
         return NULL;
     }
 
     ALLOCATE(sb->data, sizeof(char) * size);
     if (!sb->data) {
-        fprintf(stderr, "string_buffer_init(): \"data malloc failed\"");
+        fprintf(stderr, "string_buffer_init(): \"data malloc failed\"\n");
         return NULL;
     }
 
@@ -58,7 +127,7 @@ void string_buffer_destroy(string_buffer* sb) {
 
 void string_buffer_grow(string_buffer** sb) {
     if (!sb) {
-        fprintf(stderr, "string_buffer_grow(): \"null pointer given as sb\"");
+        fprintf(stderr, "string_buffer_grow(): \"null pointer given as sb\"\n");
         return;
     }
 
@@ -94,7 +163,7 @@ void string_buffer_push_front(string_buffer** sb, char c) {
  */
 size_t string_buffer_append_chunk(string_buffer** sb, size_t chunk_size, FILE* f) {
     if (!f) {
-        fprintf(stderr, "string_buffer_append_chunk(): \"FILE* f is NULL\"");
+        fprintf(stderr, "string_buffer_append_chunk(): \"FILE* f is NULL\"\n");
         return 0;
     }
 
@@ -112,3 +181,18 @@ size_t string_buffer_append_chunk(string_buffer** sb, size_t chunk_size, FILE* f
     (*sb)->length += res; //this only works because size is 1 (chars)
     return res;
 }
+
+char string_buffer_pop_front(string_buffer** sb) {
+    if (!sb) {
+        fprintf(stderr, "string_buffer_pop_front: \"sb is NULL\"\n");
+    }
+    char c = string_buffer_get(*sb, 0);
+    for (size_t i = 1; i < (*sb)->length; i++) {
+        (*sb)->data[i-1] = (*sb)->data[i];
+    }
+    (*sb)->length -= 1;
+
+    return c;
+}
+
+
