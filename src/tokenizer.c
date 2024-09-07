@@ -13,11 +13,12 @@
 
 typedef struct parser {
     bool parser_pause_flag;
-    enum TOKENIZER_STATE_TYPE current_state;
+    enum TOKENIZER_STATE_TYPE state;
+    enum TOKENIZER_STATE_TYPE return_state;
     enum INSERTION_MODE_TYPE insertion_mode;
 } parser;
 
-static parser t;
+static parser parser_t;
 
 #define UNICODE_REPLACEMENT_CHAR '0xEF' 
 
@@ -62,6 +63,19 @@ void check_for_duplicate_attributes();
 
 //for int i in temp buffer, append i to current attribute
 void flush_code_points();
+
+
+
+void set_state(enum TOKENIZER_STATE_TYPE state) {
+    parser_t.state = state;
+}
+
+void set_return_state(enum TOKENIZER_STATE_TYPE state) {
+    parser_t.return_state = state;
+}
+enum TOKENIZER_STATE_TYPE get_state() {
+    return parser_t.state;
+}
 
 
  
