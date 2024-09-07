@@ -11,7 +11,13 @@
 #include <string.h>
 
 
-static struct tokenizer tokenizer;
+typedef struct parser {
+    bool parser_pause_flag;
+    enum TOKENIZER_STATE_TYPE current_state;
+    enum INSERTION_MODE_TYPE insertion_mode;
+} parser;
+
+static parser t;
 
 #define UNICODE_REPLACEMENT_CHAR '0xEF' 
 
