@@ -7,8 +7,6 @@
 #include <stdio.h>
 #include <stddef.h>
 
-//TODO: this can probably go in a common_util header somewhere
-#define ALLOCATE(ptr, newsize) ptr = realloc(ptr, newsize)
 
 #define STRING_DEFAULT_SIZE 8
 #define STRING_GROWTH_RATE 2
