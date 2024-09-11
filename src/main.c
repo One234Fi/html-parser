@@ -46,7 +46,6 @@ void filebuffer_destroy(filebuffer* fb) {
     free(fb);
 }
 
-
 int main(int argc, char* argv[]) {
     fprintf(stdout, "%d\n", argc);
 

@@ -23,7 +23,7 @@ void input_system_init(const char* filename);
 void input_system_destroy();
 int input_system_consume();
 void input_system_reconsume(int c);
-const char* input_system_peekn(int num, size_t* out_len);
+const char* input_system_peekn(size_t num, size_t* out_len);
 char input_system_peek();
 
 string_buffer* string_buffer_init(size_t size);

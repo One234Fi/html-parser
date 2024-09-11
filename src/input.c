@@ -3,6 +3,7 @@
  */
 
 #include "input.h"
+#include "common.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
@@ -65,12 +66,12 @@ void input_system_reconsume(int c) {
 /*
  * returns a mallocd char buffer. Should be freed manually
  */
-const char* input_system_peekn(int num, size_t* out_len) {
+const char* input_system_peekn(size_t num, size_t* out_len) {
     if (input.buffer->length <= num && input.file_is_open) {
         input_system_read_more();
     }
 
-    char * buf; 
+    char * buf = NULL; 
     ALLOCATE(buf, num);
     for (size_t i = 0; i < num; i++) {
         int c = string_buffer_get(input.buffer, i);

@@ -6,7 +6,6 @@
  *
  */
 
-#include "tokenizer.h"
 enum HTML_PARSER_ERROR {
     //SPEC: Parse errors
     ABRUPT_CLOSING_OF_EMPTY_COMMENT_PARSE_ERROR,
