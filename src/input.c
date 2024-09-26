@@ -37,7 +37,7 @@ void input_system_init(const char* filename) {
 }
 
 void input_system_read_more() {
-    size_t res = string_buffer_append_chunk(&input.buffer, CHUNK_SIZE, input.f);
+    int res = string_buffer_append_chunk(&input.buffer, CHUNK_SIZE, input.f);
     if (res < 0) {
         input.file_is_open = false;
         fclose(input.f);

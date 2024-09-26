@@ -24,45 +24,45 @@ static parser parser_t;
 
 
 //TODO: unimplemented and uncategorized stubs
-void set_state(enum TOKENIZER_STATE_TYPE state);
-void set_return_state(enum TOKENIZER_STATE_TYPE state);
-enum TOKENIZER_STATE_TYPE get_state();
-void create_token(enum TOKEN_TYPE token_type);
-void emit_token(enum TOKEN_TYPE token_type, int c);
-void emit_current_token();
-void append_to_current_tag_token_name(int c);
-void clear_temporary_buffer();
-void append_to_temp_buffer(int c);
-void emit_tokens_in_temp_buffer();
-bool current_token_is_valid();
-const char* get_temporary_buffer();
-void start_new_attribute_for_current_tag_token(); 
-void append_to_current_tag_token_attribute_name(int c);
-void append_to_current_tag_token_attribute_value(int c);
-void set_self_closing_tag_for_current_token(bool b);
-void append_to_current_tag_token_comment_data(int c);
-bool adjusted_current_node();
-bool in_html_namespace();
-void set_doctype_token_force_quirks_flag (bool b);
-void set_current_token_identifier(const char* val, size_t len);
-void append_to_current_tag_token_identifier(int c);
-void return_state();
-bool is_named_character(int c);
-bool is_part_of_an_attribute();
-void interpret_character_reference_name();
-void set_character_reference_code(int c);
-int get_character_reference_code();
+extern void set_state(enum TOKENIZER_STATE_TYPE state);
+extern void set_return_state(enum TOKENIZER_STATE_TYPE state);
+extern enum TOKENIZER_STATE_TYPE get_state();
+extern void create_token(enum TOKEN_TYPE token_type);
+extern void emit_token(enum TOKEN_TYPE token_type, int c);
+extern void emit_current_token();
+extern void append_to_current_tag_token_name(int c);
+extern void clear_temporary_buffer();
+extern void append_to_temp_buffer(int c);
+extern void emit_tokens_in_temp_buffer();
+extern bool current_token_is_valid();
+extern const char* get_temporary_buffer();
+extern void start_new_attribute_for_current_tag_token(); 
+extern void append_to_current_tag_token_attribute_name(int c);
+extern void append_to_current_tag_token_attribute_value(int c);
+extern void set_self_closing_tag_for_current_token(bool b);
+extern void append_to_current_tag_token_comment_data(int c);
+extern bool adjusted_current_node();
+extern bool in_html_namespace();
+extern void set_doctype_token_force_quirks_flag (bool b);
+extern void set_current_token_identifier(const char* val, size_t len);
+extern void append_to_current_tag_token_identifier(int c);
+extern void return_state();
+extern bool is_named_character(int c);
+extern bool is_part_of_an_attribute();
+extern void interpret_character_reference_name();
+extern void set_character_reference_code(int c);
+extern int get_character_reference_code();
 
 /* 
  * attribute name needs to be compared against already created attribute names, 
  * if there are duplicates, it is a duplicate attribute parse error, and the 
  * new attribute needs to be removed from the token
  */
-void check_for_duplicate_attributes();
+extern void check_for_duplicate_attributes();
 
 
 //for int i in temp buffer, append i to current attribute
-void flush_code_points();
+extern void flush_code_points();
 
 
 
@@ -77,8 +77,6 @@ enum TOKENIZER_STATE_TYPE get_state() {
     return parser_t.state;
 }
 
-
- 
 
 //state handlers
 void data_state();
@@ -1768,7 +1766,7 @@ void before_doctype_public_identifier_state() {
     }
 }
 
-void doctype_public_identifer_double_quoted_state() {
+void doctype_public_identifier_double_quoted_state() {
     int c = input_system_consume();
     switch (c) {
         case '"':
@@ -2245,6 +2243,7 @@ void decimal_character_reference_state() {
         int curr_as_numeric = c - 0x0030;
         int ref_code = get_character_reference_code() * 10;
         ref_code += curr_as_numeric;
+        set_character_reference_code(ref_code);
     } else if (c == ';') {
         set_state(NUMERIC_CHARACTER_REFERENCE_END_STATE);
     } else {
