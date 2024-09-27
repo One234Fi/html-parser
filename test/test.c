@@ -33,7 +33,7 @@ void color_banner() {
 
 void results() {
     fprintf(stdout, "============\n");
-    fprintf(stdout, "Total: %zu\nPassed: %zu\nFailed: %zu\n", num_tests, succeeded, failed);
+    fprintf(stdout, "Total: %zu\nPassed: %zu\nFailed: %zu\n", succeeded + failed, succeeded, failed);
 }
 
 int main() {
