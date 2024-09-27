@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <string.h>
 
 
 struct input_system {
@@ -32,7 +33,7 @@ void input_system_init(const char* filename) {
     input.file_is_open = true;
     input.f = f;
 
-    input.buffer = string_buffer_init(CHUNK_SIZE);
+    input.buffer = string_buffer_init(CHUNK_SIZE, NULL, 0);
     string_buffer_append_chunk(&input.buffer, CHUNK_SIZE, input.f);
 }
 
@@ -59,14 +60,14 @@ int input_system_consume() {
     return string_buffer_pop_front(&input.buffer);
 }
 
-void input_system_reconsume(int c) {
+void input_system_reconsume(const int c) {
     string_buffer_push_front(&input.buffer, c);
 }
 
 /*
  * returns a mallocd char buffer. Should be freed manually
  */
-const char* input_system_peekn(size_t num, size_t* out_len) {
+const char* input_system_peekn(const size_t num, size_t* out_len) {
     if (input.buffer->length <= num && input.file_is_open) {
         input_system_read_more();
     }
@@ -113,13 +114,10 @@ void normalize_newlines(string_buffer** sb) {
  * size: the desired initial size (in datatype units)
  * return: a pointer to an initialized string_buffer or NULL
  */
-string_buffer* string_buffer_init(size_t size) {
+string_buffer* string_buffer_init(const size_t size, const char* strdata, const size_t strlen) {
     string_buffer* sb = NULL;
     ALLOCATE(sb, sizeof(string_buffer));
-    if (!sb) {
-        fprintf(stderr, "string_buffer_init(): \"struct malloc failed\"\n");
-        return NULL;
-    }
+    ASSERT(!sb, "struct malloc failed", NULL);
 
     ALLOCATE(sb->data, sizeof(char) * size);
     if (!sb->data) {
@@ -129,6 +127,8 @@ string_buffer* string_buffer_init(size_t size) {
 
     sb->length = 0;
     sb->capacity = size;
+
+    string_buffer_append_raw(&sb, strdata, strlen);
 
     return sb;
 }
@@ -146,16 +146,37 @@ void string_buffer_destroy(string_buffer* sb) {
 }
 
 void string_buffer_grow(string_buffer** sb) {
-    if (!sb) {
-        fprintf(stderr, "string_buffer_grow(): \"null pointer given as sb\"\n");
-        return;
-    }
+    ASSERT(!sb, "NULL pointer passed as sb", );
 
     (*sb)->capacity *= STRING_GROWTH_RATE;
     ALLOCATE(*sb, (*sb)->capacity);
 }
 
-void string_buffer_push_back(string_buffer** sb, char c) {
+void string_buffer_grow_to(string_buffer** sb, size_t required_size) {
+    ASSERT(!sb, "NULL pointer passed as sb", );
+
+    size_t newsize = (*sb)->capacity;
+    while (newsize <= required_size) {
+        newsize *= STRING_GROWTH_RATE;
+    }
+    if (newsize != (*sb)->capacity) {
+        ALLOCATE(((*sb)->data), newsize);
+        (*sb)->capacity = newsize;
+    }
+}
+
+void string_buffer_append_raw(string_buffer** sb, const char* strdata, const size_t strlen) {
+    ASSERT(!sb, "null pointer given as sb", );
+    ASSERT(!strdata, "null pointer given as strdata", );
+
+    size_t required_size = (*sb)->length + strlen;
+    string_buffer_grow_to(sb, required_size);
+
+    memcpy((*sb)->data + (*sb)->length, strdata, strlen);
+    (*sb)->length += strlen;
+}
+
+void string_buffer_push_back(string_buffer** sb, const char c) {
     if ((*sb)->capacity <= (*sb)->length) {
         string_buffer_grow(sb);
     }
@@ -164,7 +185,7 @@ void string_buffer_push_back(string_buffer** sb, char c) {
     (*sb)->length += 1;
 }
 
-void string_buffer_push_front(string_buffer** sb, char c) {
+void string_buffer_push_front(string_buffer** sb, const char c) {
     if ((*sb)->capacity <= (*sb)->length) {
         string_buffer_grow(sb);
     }
@@ -181,21 +202,11 @@ void string_buffer_push_front(string_buffer** sb, char c) {
  * append chunk_size bytes from f to sb
  * return: the output from fread() or 0 if the file can't be read from
  */
-size_t string_buffer_append_chunk(string_buffer** sb, size_t chunk_size, FILE* f) {
-    if (!f) {
-        fprintf(stderr, "string_buffer_append_chunk(): \"FILE* f is NULL\"\n");
-        return 0;
-    }
+size_t string_buffer_append_chunk(string_buffer** sb, const size_t chunk_size, FILE* f) {
+    ASSERT(!f, "FILE* f is NULL", 0);
 
-    size_t newsize = (*sb)->capacity;
     size_t required_size = (*sb)->length + chunk_size;
-    while (newsize <= required_size) {
-        newsize *= STRING_GROWTH_RATE;
-    }
-    if (newsize != (*sb)->capacity) {
-        ALLOCATE(((*sb)->data), newsize);
-        (*sb)->capacity = newsize;
-    }
+    string_buffer_grow_to(sb, required_size);
 
     size_t res = fread((*sb)->data + (*sb)->length, 1, chunk_size, f);
     (*sb)->length += res; //this only works because size is 1 (chars)
@@ -203,9 +214,7 @@ size_t string_buffer_append_chunk(string_buffer** sb, size_t chunk_size, FILE* f
 }
 
 char string_buffer_pop_front(string_buffer** sb) {
-    if (!sb) {
-        fprintf(stderr, "string_buffer_pop_front: \"sb is NULL\"\n");
-    }
+    ASSERT(!sb, "sb is NULL", 0);
     char c = string_buffer_get(*sb, 0);
     for (size_t i = 1; i < (*sb)->length; i++) {
         (*sb)->data[i-1] = (*sb)->data[i];
