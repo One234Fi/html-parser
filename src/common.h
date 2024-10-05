@@ -15,5 +15,6 @@
 #define ASSERT(expr, message, return_val) if (expr) { LOG_ERROR(message); return return_val; } 
 
 #define ALLOCATE(ptr, newsize) ptr = realloc(ptr, newsize)
+#define FREE(ptr) free(ptr); ptr = NULL
 
 #endif

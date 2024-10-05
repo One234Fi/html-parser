@@ -16,6 +16,7 @@ struct input_system {
     bool file_is_open;
 };
 
+
 static struct input_system input = {};
 static const size_t CHUNK_SIZE = 1024;
 
@@ -50,7 +51,7 @@ void input_system_destroy() {
     if (input.f) {
         fclose(input.f);
     }
-    string_buffer_destroy(input.buffer);
+    string_buffer_destroy(&input.buffer);
 }
 
 int input_system_consume() {
@@ -110,6 +111,8 @@ void normalize_newlines(string_buffer** sb) {
 
 
 
+
+
 /*
  * size: the desired initial size (in datatype units)
  * return: a pointer to an initialized string_buffer or NULL
@@ -117,18 +120,24 @@ void normalize_newlines(string_buffer** sb) {
 string_buffer* string_buffer_init(const size_t size, const char* strdata, const size_t strlen) {
     string_buffer* sb = NULL;
     ALLOCATE(sb, sizeof(string_buffer));
-    ASSERT(!sb, "struct malloc failed", NULL);
+    ASSERT(!sb, "string_buffer struct malloc failed", NULL);
 
-    ALLOCATE(sb->data, sizeof(char) * size);
-    if (!sb->data) {
-        fprintf(stderr, "string_buffer_init(): \"data malloc failed\"\n");
-        return NULL;
+    size_t init_len = size;
+    if (init_len < STRING_DEFAULT_SIZE) {
+        init_len = STRING_DEFAULT_SIZE;
     }
+    ALLOCATE(sb->data, sizeof(char) * init_len);
+    ASSERT(!sb->data, "string_buffer data malloc failed", NULL);
+
 
     sb->length = 0;
-    sb->capacity = size;
+    sb->capacity = init_len;
 
-    string_buffer_append_raw(&sb, strdata, strlen);
+    if (strdata) {
+        string_buffer_grow_to(&sb, strlen);
+        strncpy(sb->data, strdata, strlen);
+        sb->length += strlen;
+    }
 
     return sb;
 }
@@ -136,24 +145,35 @@ string_buffer* string_buffer_init(const size_t size, const char* strdata, const 
 /*
  * frees memory for a string_buffer if it exists
  */
-void string_buffer_destroy(string_buffer* sb) {
-    if (sb) {
-        if (sb->data) {
-            free(sb->data);
+void string_buffer_destroy(string_buffer** sb) {
+    if (*sb) {
+        if ((*sb)->data) {
+            FREE((*sb)->data);
         }
-        free(sb);
+        FREE((*sb));
     }
 }
 
 void string_buffer_grow(string_buffer** sb) {
     ASSERT(!sb, "NULL pointer passed as sb", );
+    ASSERT(!(*sb), "NULL pointer passed for sb's struct", );
+
+    if ((*sb)->capacity < STRING_DEFAULT_SIZE) {
+        (*sb)->capacity = STRING_DEFAULT_SIZE;
+    }
 
     (*sb)->capacity *= STRING_GROWTH_RATE;
+
     ALLOCATE(*sb, (*sb)->capacity);
 }
 
 void string_buffer_grow_to(string_buffer** sb, size_t required_size) {
     ASSERT(!sb, "NULL pointer passed as sb", );
+    ASSERT(!(*sb), "NULL pointer passed for sb's struct", );
+
+    if ((*sb)->capacity < STRING_DEFAULT_SIZE) {
+        (*sb)->capacity = STRING_DEFAULT_SIZE;
+    }
 
     size_t newsize = (*sb)->capacity;
     while (newsize <= required_size) {
@@ -167,16 +187,20 @@ void string_buffer_grow_to(string_buffer** sb, size_t required_size) {
 
 void string_buffer_append_raw(string_buffer** sb, const char* strdata, const size_t strlen) {
     ASSERT(!sb, "null pointer given as sb", );
+    ASSERT(!(*sb), "null pointer given as sb struct", );
     ASSERT(!strdata, "null pointer given as strdata", );
 
-    size_t required_size = (*sb)->length + strlen;
+    size_t required_size = (*sb)->length + strlen ;
     string_buffer_grow_to(sb, required_size);
 
-    memcpy((*sb)->data + (*sb)->length, strdata, strlen);
+    strncat((*sb)->data, strdata, strlen);
     (*sb)->length += strlen;
 }
 
 void string_buffer_push_back(string_buffer** sb, const char c) {
+    ASSERT(!sb, "null pointer given as sb", );
+    ASSERT(!(*sb), "null pointer given as sb struct", );
+
     if ((*sb)->capacity <= (*sb)->length) {
         string_buffer_grow(sb);
     }
@@ -199,11 +223,16 @@ void string_buffer_push_front(string_buffer** sb, const char c) {
 }
 
 /*
- * append chunk_size bytes from f to sb
- * return: the output from fread() or 0 if the file can't be read from
+ *  append chunk_size bytes from f to sb 
+ *
+ *   
+ *  return: the output from fread() or 0 if the file can't be read from 
  */
 size_t string_buffer_append_chunk(string_buffer** sb, const size_t chunk_size, FILE* f) {
     ASSERT(!f, "FILE* f is NULL", 0);
+    ASSERT(!sb, "sb is NULL", 0);
+    ASSERT(!(*sb), "sb struct is NULL", 0);
+    ASSERT(!(*sb)->data, "sb data is NULL", 0);
 
     size_t required_size = (*sb)->length + chunk_size;
     string_buffer_grow_to(sb, required_size);
@@ -215,11 +244,12 @@ size_t string_buffer_append_chunk(string_buffer** sb, const size_t chunk_size, F
 
 char string_buffer_pop_front(string_buffer** sb) {
     ASSERT(!sb, "sb is NULL", 0);
+    ASSERT(!(*sb), "sb struct is NULL", 0);
+    ASSERT(!(*sb)->data, "sb data is NULL", 0);
+
     char c = string_buffer_get(*sb, 0);
-    for (size_t i = 1; i < (*sb)->length; i++) {
-        (*sb)->data[i-1] = (*sb)->data[i];
-    }
     (*sb)->length -= 1;
+    memmove((*sb)->data, (*sb)->data + 1, (*sb)->length);
 
     return c;
 }

@@ -27,8 +27,9 @@ const char* input_system_peekn(size_t num, size_t* out_len);
 char input_system_peek();
 
 string_buffer* string_buffer_init(const size_t size, const char* strdata, const size_t strlen);
-void string_buffer_destroy(string_buffer* sb);
+void string_buffer_destroy(string_buffer** sb);
 void string_buffer_grow(string_buffer** sb);
+void string_buffer_grow_to(string_buffer** sb, size_t required_size);
 void string_buffer_push_back(string_buffer** sb, const char c);
 void string_buffer_push_front(string_buffer** sb, const char c);
 void string_buffer_append_raw(string_buffer** sb, const char* strdata, const size_t strlen);
