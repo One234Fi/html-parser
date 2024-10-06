@@ -102,11 +102,20 @@ void normalize_newlines(string_buffer** sb) {
         }
     }
 
+    //edge case
+    if ((*sb)->data[0] == '\r' && (*sb)->data[1] == '\n') {
+            for (size_t j = 0; j < (*sb)->length-1; j++) {
+                (*sb)->data[j] = (*sb)->data[j+1];
+            }
+            (*sb)->length -= 1;
+    }
+
     for (size_t i = 0; i < (*sb)->length; i++) {
         if ((*sb)->data[i] == '\r') {
             (*sb)->data[i] = '\n';
         }
     }
+    (*sb)->data[(*sb)->length] = '\0';
 }
 
 

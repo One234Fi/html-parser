@@ -2,11 +2,11 @@
 #include <stdio.h>
 
 void color_banner();
-void run_input_stream_preprocessing_tests();
+void run_input_tests();
 
 void (*tests[]) (void) = {
     color_banner,
-    run_input_stream_preprocessing_tests
+    run_input_tests
 };
 static size_t num_tests = sizeof(tests) / sizeof(tests[0]);
 size_t succeeded = 0;
