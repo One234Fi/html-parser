@@ -1,35 +1,17 @@
 #include "common.h"
+#include "node_stack.h"
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdio.h>
 
-#define NODE_STACK_DEFAULT_SIZE 8
-#define NODE_STACK_GROWTH_RATE 2
-
-typedef struct node {
-    char type;
-} node;
-
-typedef struct node_stack {
-    node* data;
-    size_t size;
-    size_t capacity;
-    node* adjusted_current_node;
-} node_stack;
-
 
 node_stack* node_stack_init(const size_t size) {
-    node_stack* ns;
+    node_stack* ns = NULL;
     ALLOCATE(ns, size);
-    if (!ns) {
-        fprintf(stderr, "node_stack_init(): \"struct malloc failed\"\n");
-        return NULL;
-    }
+    ASSERT(!ns, "struct malloc failed", NULL); 
 
     ALLOCATE(ns->data, sizeof(node) * size);
-    if (!ns->data) {
-        fprintf(stderr, "node_stack_init(): \"data malloc failed\"\n");
-        return NULL;
-    }
+    ASSERT(!ns->data, "data malloc failed", NULL); 
 
     ns->size = 0;
     ns->capacity = size;
@@ -38,12 +20,13 @@ node_stack* node_stack_init(const size_t size) {
     return ns;
 }
 
-void node_stack_destroy(node_stack* ns) {
-    if (ns) {
-        if (ns->data) {
-            free(ns->data);
+void node_stack_destroy(node_stack** ns) {
+    ASSERT(!ns, "Node stack pointer is NULL", );
+    if ((*ns)) {
+        if ((*ns)->data) {
+            FREE((*ns)->data);
         }
-        free(ns);
+        FREE(*ns);
     }
 }
 
@@ -60,22 +43,29 @@ void node_stack_push(const node n, node_stack** ns) {
 }
 
 node node_stack_pop(node_stack** ns) {
-    if ((*ns)->size > 0) {
-        (*ns)->size -= 1;
-        return (*ns)->data[(*ns)->size];
+    ASSERT(!ns, "NULL pointer passed as ns", (node){});
+    ASSERT(!(*ns), "Node stack struct is NULL", (node){});
+    ASSERT(!(*ns)->data, "Node stack data is NULL", (node){});
+    ASSERT(!node_stack_is_empty(*ns), "Node stack is empty", (node){});
+
+    (*ns)->size -= 1;
+    return (*ns)->data[(*ns)->size];
+}
+
+node node_stack_peek(const node_stack* ns) {
+    ASSERT(!ns, "NULL pointer passed as ns", (node){});
+
+    if (ns->size > 0) {
+        return ns->data[ns->size-1];
     } else {
-        fprintf(stderr, "node_stack_pop(): \"NODE STACK IS EMPTY\"");
+        LOG_ERROR("NODE STACK IS EMPTY");
         return (node){};
     }
 }
 
-node node_stack_peek(const node_stack* ns) {
-    if (ns->size > 0) {
-        return ns->data[ns->size-1];
-    } else {
-        fprintf(stderr, "node_stack_peek(): \"NODE STACK IS EMPTY\"");
-        return (node){};
-    }
+bool node_stack_is_empty(const node_stack* ns) {
+    ASSERT(!ns, "NULL pointer passed as ns", true);
+    return ns->size == 0;
 }
 
 node node_init(char type) {

@@ -20,14 +20,14 @@ typedef struct ATTRIBUTE_LIST {
     size_t max;
 } AttributeList;
 
-enum TOKEN_TYPE {
+typedef enum TOKEN_TYPE {
     DOCTYPE,
     START_TAG,
     END_TAG,
     COMMENT,
     CHARACTER,
     END_OF_FILE
-};
+} TOKEN_TYPE;
 
 struct TOKEN_DOCTYPE {
     char* name;         // init: missing
@@ -68,10 +68,10 @@ union TOKEN_UNION {
     struct TOKEN_END_OF_FILE eof;
 };
 
-struct TOKEN_STRUCT {
+typedef struct TOKEN_STRUCT {
     union TOKEN_UNION val;
     enum TOKEN_TYPE type;
-};
+} TOKEN_STRUCT;
 
 enum TOKENIZER_STATE_TYPE {
     DATA_STATE,

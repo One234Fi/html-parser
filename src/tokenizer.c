@@ -24,9 +24,6 @@ static parser parser_t;
 
 
 //TODO: unimplemented and uncategorized stubs
-extern void set_state(enum TOKENIZER_STATE_TYPE state);
-extern void set_return_state(enum TOKENIZER_STATE_TYPE state);
-extern enum TOKENIZER_STATE_TYPE get_state();
 extern void create_token(enum TOKEN_TYPE token_type);
 extern void emit_token(enum TOKEN_TYPE token_type, int c);
 extern void emit_current_token();
@@ -66,6 +63,10 @@ extern void flush_code_points();
 
 
 
+extern void set_state(enum TOKENIZER_STATE_TYPE state);
+extern void set_return_state(enum TOKENIZER_STATE_TYPE state);
+extern enum TOKENIZER_STATE_TYPE get_state();
+
 void set_state(enum TOKENIZER_STATE_TYPE state) {
     parser_t.state = state;
 }
@@ -76,6 +77,7 @@ void set_return_state(enum TOKENIZER_STATE_TYPE state) {
 enum TOKENIZER_STATE_TYPE get_state() {
     return parser_t.state;
 }
+
 
 
 //state handlers
