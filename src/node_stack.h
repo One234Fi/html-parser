@@ -3,12 +3,14 @@
 
 #include <stdbool.h>
 #include <stdlib.h>
+#include "input.h"
 
 #define NODE_STACK_DEFAULT_SIZE 8
 #define NODE_STACK_GROWTH_RATE 2
 
 typedef struct node {
-    char type;
+    int type;
+    string_buffer name;
 } node;
 
 typedef struct node_stack {
