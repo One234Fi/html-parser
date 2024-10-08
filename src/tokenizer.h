@@ -26,7 +26,8 @@ typedef enum TOKEN_TYPE {
     END_TAG,
     COMMENT,
     CHARACTER,
-    END_OF_FILE
+    END_OF_FILE,
+    TOKEN_TYPE_COUNT
 } TOKEN_TYPE;
 
 struct TOKEN_DOCTYPE {
@@ -71,7 +72,7 @@ union TOKEN_UNION {
 typedef struct TOKEN_STRUCT {
     union TOKEN_UNION val;
     enum TOKEN_TYPE type;
-} TOKEN_STRUCT;
+} token;
 
 enum TOKENIZER_STATE_TYPE {
     DATA_STATE,
