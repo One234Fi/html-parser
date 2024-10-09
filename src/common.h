@@ -17,4 +17,6 @@
 #define ALLOCATE(ptr, newsize) ptr = realloc(ptr, newsize)
 #define FREE(ptr) free(ptr); ptr = NULL
 
+#define vector_get(vec, i) (vec)->data[i]
+
 #endif
