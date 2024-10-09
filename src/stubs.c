@@ -79,11 +79,6 @@ bool adjusted_current_node() {
     return 0;
 }
 
-bool in_html_namespace() {
-    fprintf(stderr, "Unimplemented: in_html_namespace\n");
-    return 0;
-}
-
 void set_doctype_token_force_quirks_flag (bool b) {
     fprintf(stderr, "Unimplemented: set_doctype_token_force_quirks_flag\n");
 }

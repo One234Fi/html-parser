@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+#include "common.h"
 
 
 
@@ -13,14 +14,30 @@ void tree_construction_dispatcher(struct TOKEN_STRUCT input);
 
 
 bool has_attribute(node n, char* attr_type);
+
+bool has_attribute(node n, char *attr_type) {
+    LOG_WARN("UNIMPLEMENTED");
+    return false;
+}
+
 #define ATTRIBUTE_ENCODING "attribute_encoding_placeholder"
 
 node get_current_node();
 node get_adjusted_current_node();
 
-bool in_html_namespace(node n);
+bool in_html_namespace(node n) {
+    LOG_WARN("UNIMPLEMENTED");
+    return false;
+}
+
 bool is_html_integration_point(node n);
+
 bool is_mathml_annotation_xml_element(node n);
+
+bool is_mathml_annotation_xml_element(node n) {
+    LOG_WARN("UNIMPLEMENTED");
+    return false;
+}
 
 typedef struct tree_construction_state {
     node_stack* open_elements_stack;
@@ -29,7 +46,7 @@ typedef struct tree_construction_state {
 static tree_construction_state state;
 
 
-void tree_construction_phase(TOKEN_STRUCT input) {
+void tree_construction_phase(token input) {
     tree_construction_dispatcher(input);
 }
 
