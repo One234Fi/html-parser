@@ -4,6 +4,8 @@
  */
 
 
+#include "input.h"
+#include "tokenizer.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -50,9 +52,10 @@ int main(int argc, char* argv[]) {
     fprintf(stdout, "%d\n", argc);
 
     if (argc > 1) {
-        filebuffer* file = loadfile(argv[1]);
-        fprintf(stdout, "Content:\n%s\n", file->data);
-        filebuffer_destroy(file);
+        input_system_init(argv[1]);
+        while (!input_system_empty()) {
+            execute();
+        }
     }
 
     return EXIT_SUCCESS;

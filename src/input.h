@@ -6,6 +6,7 @@
 
 #include <stdio.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 
 #define STRING_DEFAULT_SIZE 8
@@ -25,6 +26,7 @@ int input_system_consume();
 void input_system_reconsume(int c);
 const char* input_system_peekn(size_t num, size_t* out_len);
 char input_system_peek();
+bool input_system_empty();
 
 string_buffer* string_buffer_init(const size_t size, const char* strdata, const size_t strlen);
 void string_buffer_destroy(string_buffer** sb);

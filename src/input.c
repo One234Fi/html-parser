@@ -23,6 +23,9 @@ static const size_t CHUNK_SIZE = 1024;
 void input_system_read_more();
 void normalize_newlines(string_buffer** sb);
 
+bool input_system_empty() {
+    return input.buffer->length == 0;
+}
 
 void input_system_init(const char* filename) {
     FILE* f;

@@ -6,8 +6,12 @@
  * 08/24/2024
  */
 
+#include "input.h"
 #include <stdbool.h>
 #include <stdlib.h>
+
+
+void execute();
 
 typedef struct HTML_ATTRIBUTE {
     char* name;
@@ -38,13 +42,13 @@ struct TOKEN_DOCTYPE {
 };
 
 struct TOKEN_START_TAG {
-    char* tag_name;
+    string_buffer* tag_name;
     bool self_closing;
     AttributeList attributes;
 };
 
 struct TOKEN_END_TAG {
-    char* tag_name;
+    string_buffer* tag_name;
     bool self_closing;
     AttributeList attributes;
 };
