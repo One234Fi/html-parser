@@ -12,7 +12,7 @@
 #define LOG_INFO(message) fprintf(stderr, BLUE"%s, %s, %d:"COLOR_RESET" \"%s\"\n", __FILE__, __func__, __LINE__, message)
 #define LOG_ERROR(message) fprintf(stderr, BLUE"%s, %s, %d:"RED" \"%s\"\n"COLOR_RESET, __FILE__, __func__, __LINE__, message)
 #define LOG_WARN(message) fprintf(stderr, BLUE"%s, %s, %d:"YELLOW" \"%s\"\n"COLOR_RESET, __FILE__, __func__, __LINE__, message)
-#define ASSERT(expr, message, return_val) if (expr) { LOG_ERROR(message); return return_val; } 
+#define ASSERT(expr, message, return_val) if (!(expr)) { LOG_ERROR(message); return return_val; } 
 
 #define ALLOCATE(ptr, newsize) ptr = realloc(ptr, newsize)
 #define FREE(ptr) free(ptr); ptr = NULL

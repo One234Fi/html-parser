@@ -129,14 +129,14 @@ void normalize_newlines(string_buffer** sb) {
 string_buffer* string_buffer_init(const size_t size, const char* strdata, const size_t strlen) {
     string_buffer* sb = NULL;
     ALLOCATE(sb, sizeof(string_buffer));
-    ASSERT(!sb, "string_buffer struct malloc failed", NULL);
+    ASSERT(sb, "string_buffer struct malloc failed", NULL);
 
     size_t init_len = size;
     if (init_len < STRING_DEFAULT_SIZE) {
         init_len = STRING_DEFAULT_SIZE;
     }
     ALLOCATE(sb->data, sizeof(char) * init_len);
-    ASSERT(!sb->data, "string_buffer data malloc failed", NULL);
+    ASSERT(sb->data, "string_buffer data malloc failed", NULL);
 
 
     sb->length = 0;
@@ -164,8 +164,8 @@ void string_buffer_destroy(string_buffer** sb) {
 }
 
 void string_buffer_grow(string_buffer** sb) {
-    ASSERT(!sb, "NULL pointer passed as sb", );
-    ASSERT(!(*sb), "NULL pointer passed for sb's struct", );
+    ASSERT(sb, "NULL pointer passed as sb", );
+    ASSERT((*sb), "NULL pointer passed for sb's struct", );
 
     if ((*sb)->capacity < STRING_DEFAULT_SIZE) {
         (*sb)->capacity = STRING_DEFAULT_SIZE;
@@ -177,8 +177,8 @@ void string_buffer_grow(string_buffer** sb) {
 }
 
 void string_buffer_grow_to(string_buffer** sb, size_t required_size) {
-    ASSERT(!sb, "NULL pointer passed as sb", );
-    ASSERT(!(*sb), "NULL pointer passed for sb's struct", );
+    ASSERT(sb, "NULL pointer passed as sb", );
+    ASSERT((*sb), "NULL pointer passed for sb's struct", );
 
     if ((*sb)->capacity < STRING_DEFAULT_SIZE) {
         (*sb)->capacity = STRING_DEFAULT_SIZE;
@@ -195,9 +195,9 @@ void string_buffer_grow_to(string_buffer** sb, size_t required_size) {
 }
 
 void string_buffer_append_raw(string_buffer** sb, const char* strdata, const size_t strlen) {
-    ASSERT(!sb, "null pointer given as sb", );
-    ASSERT(!(*sb), "null pointer given as sb struct", );
-    ASSERT(!strdata, "null pointer given as strdata", );
+    ASSERT(sb, "null pointer given as sb", );
+    ASSERT((*sb), "null pointer given as sb struct", );
+    ASSERT(strdata, "null pointer given as strdata", );
 
     size_t required_size = (*sb)->length + strlen ;
     string_buffer_grow_to(sb, required_size);
@@ -207,8 +207,8 @@ void string_buffer_append_raw(string_buffer** sb, const char* strdata, const siz
 }
 
 void string_buffer_push_back(string_buffer** sb, const char c) {
-    ASSERT(!sb, "null pointer given as sb", );
-    ASSERT(!(*sb), "null pointer given as sb struct", );
+    ASSERT(sb, "null pointer given as sb", );
+    ASSERT((*sb), "null pointer given as sb struct", );
 
     if ((*sb)->capacity <= (*sb)->length) {
         string_buffer_grow(sb);
@@ -223,7 +223,7 @@ void string_buffer_push_front(string_buffer** sb, const char c) {
         string_buffer_grow(sb);
     }
 
-    for (size_t i = (*sb)->length; i > 1; i++) {
+    for (size_t i = (*sb)->length; i > 1; i--) {
         (*sb)->data[i] = (*sb)->data[i-1];
     }
 
@@ -238,10 +238,10 @@ void string_buffer_push_front(string_buffer** sb, const char c) {
  *  return: the output from fread() or 0 if the file can't be read from 
  */
 size_t string_buffer_append_chunk(string_buffer** sb, const size_t chunk_size, FILE* f) {
-    ASSERT(!f, "FILE* f is NULL", 0);
-    ASSERT(!sb, "sb is NULL", 0);
-    ASSERT(!(*sb), "sb struct is NULL", 0);
-    ASSERT(!(*sb)->data, "sb data is NULL", 0);
+    ASSERT(f, "FILE* f is NULL", 0);
+    ASSERT(sb, "sb is NULL", 0);
+    ASSERT((*sb), "sb struct is NULL", 0);
+    ASSERT((*sb)->data, "sb data is NULL", 0);
 
     size_t required_size = (*sb)->length + chunk_size;
     string_buffer_grow_to(sb, required_size);
@@ -252,9 +252,9 @@ size_t string_buffer_append_chunk(string_buffer** sb, const size_t chunk_size, F
 }
 
 char string_buffer_pop_front(string_buffer** sb) {
-    ASSERT(!sb, "sb is NULL", 0);
-    ASSERT(!(*sb), "sb struct is NULL", 0);
-    ASSERT(!(*sb)->data, "sb data is NULL", 0);
+    ASSERT(sb, "sb is NULL", 0);
+    ASSERT((*sb), "sb struct is NULL", 0);
+    ASSERT((*sb)->data, "sb data is NULL", 0);
 
     char c = string_buffer_get(*sb, 0);
     (*sb)->length -= 1;
