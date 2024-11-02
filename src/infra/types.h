@@ -22,6 +22,8 @@ infra_byte_sequence infra_byte_sequenceto_lowercase(infra_byte_sequence bytes);
 infra_byte_sequence infra_byte_sequenceto_uppercase(infra_byte_sequence bytes);
 bool infra_byte_sequence_equal_ignore_case(infra_byte_sequence a, infra_byte_sequence b);
 
+bool infra_byte_sequence_is_potential_prefix(infra_byte_sequence potential_prefix, infra_byte_sequence input);
+
 //impl details
 infra_byte_sequence infra_byte_sequence_init(const size_t size, const char* data, const size_t length);
 void infra_byte_sequence_destroy(infra_byte_sequence* ptr);

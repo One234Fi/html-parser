@@ -196,3 +196,36 @@ infra_byte infra_byte_sequence_pop_front(infra_byte_sequence* ptr) {
     return c;
 }
 
+bool infra_byte_sequence_is_potential_prefix(infra_byte_sequence potential_prefix, infra_byte_sequence input) {
+    for(size_t i = 0; i < input->length; i++) {
+        if (i >= potential_prefix->length) {
+            return true;
+        }
+
+        infra_byte potential_prefix_byte = potential_prefix->data[i];
+        infra_byte input_byte = input->data[i];
+        if (potential_prefix_byte != input_byte) {
+            return false;
+        }
+    }
+    return false;
+}
+
+bool infra_byte_sequence_is_byte_less_than(infra_byte_sequence a, infra_byte_sequence b) {
+    if (infra_byte_sequence_is_potential_prefix(b, a)) {
+        return false;
+    }
+    if (infra_byte_sequence_is_potential_prefix(a, b)) {
+        return true;
+    }
+    infra_byte* ap = a->data;
+    infra_byte* bp = b->data;
+    while (*ap == *bp) {
+        ap ++;
+        bp ++;
+    }
+    if (*ap < *bp) {
+        return true;
+    }
+    return false;
+}
