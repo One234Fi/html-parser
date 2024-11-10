@@ -7,6 +7,8 @@
  */
 
 #include "input.h"
+#include "option.h"
+#include "vector.h"
 #include <stdbool.h>
 #include <stdlib.h>
 
@@ -34,23 +36,24 @@ typedef enum TOKEN_TYPE {
     TOKEN_TYPE_COUNT
 } TOKEN_TYPE;
 
+//TODO: create generic optional type for "missing" fields
 struct TOKEN_DOCTYPE {
-    char* name;         // init: missing
-    int public_id;      // init: missing
-    int system_id;      // init: missing
-    bool force_quirks;  // init: off
+    opt * name;                 // string
+    opt * public_id;            // int
+    opt * system_id;            // int
+    bool force_quirks;  
 };
 
 struct TOKEN_START_TAG {
-    string_buffer* tag_name;
+    opt * tag_name;             // string
     bool self_closing;
-    AttributeList attributes;
+    vector* attributes;         // attribute
 };
 
 struct TOKEN_END_TAG {
-    string_buffer* tag_name;
+    opt * tag_name;             // string
     bool self_closing;
-    AttributeList attributes;
+    vector* attributes;         // attribute
 };
 
 struct TOKEN_COMMENT {

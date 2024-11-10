@@ -14,7 +14,5 @@
 #define LOG_WARN(message) fprintf(stderr, BLUE"%s, %s, %d:"YELLOW" \"%s\"\n"COLOR_RESET, __FILE__, __func__, __LINE__, message)
 #define ASSERT(expr, message, return_val) if (!(expr)) { LOG_ERROR(message); return return_val; } 
 
-#define ALLOCATE(ptr, newsize) ptr = realloc(ptr, newsize)
-#define FREE(ptr) free(ptr); ptr = NULL
 
 #endif

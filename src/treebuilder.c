@@ -41,10 +41,16 @@ bool is_mathml_annotation_xml_element(node n) {
 
 typedef struct tree_construction_state {
     node_stack* open_elements_stack;
+    enum INSERTION_MODE_TYPE insertion_mode;
 } tree_construction_state;
 
 static tree_construction_state state;
 
+void tree_construction_init() {
+    state = (tree_construction_state) {
+        .insertion_mode = INSERTION_MODE_INITIAL
+    };
+}
 
 void tree_construction_phase(token input) {
     tree_construction_dispatcher(input);

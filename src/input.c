@@ -4,6 +4,7 @@
 
 #include "input.h"
 #include "common.h"
+#include "mem.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
