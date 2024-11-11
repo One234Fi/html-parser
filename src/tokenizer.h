@@ -15,6 +15,8 @@
 
 void execute();
 
+typedef struct parser parser;
+
 typedef struct HTML_ATTRIBUTE {
     char* name;
     char* value;

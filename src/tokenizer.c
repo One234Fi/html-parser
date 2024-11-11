@@ -12,13 +12,13 @@
 #include <string.h>
 
 
-typedef struct parser {
+struct parser {
     token* current_token;
     enum TOKENIZER_STATE_TYPE state;
     enum TOKENIZER_STATE_TYPE return_state;
     enum INSERTION_MODE_TYPE insertion_mode;
     bool parser_pause_flag;
-} parser;
+};
 
 static parser parser_t = {
     .state = DATA_STATE,
@@ -28,7 +28,6 @@ static parser parser_t = {
 
 
 //TODO: unimplemented and uncategorized stubs
-extern token* token_init(enum TOKEN_TYPE token_type);
 extern void emit_token(enum TOKEN_TYPE token_type, int c);
 extern void emit_current_token();
 extern void append_to_current_tag_token_name(int c);

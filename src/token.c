@@ -5,8 +5,10 @@
 #include "vector.h"
 
 AttributeList * attribute_list_init();
+void attribute_list_destroy(AttributeList * list);
 
-token * token_init(TOKEN_TYPE type) {
+token * 
+token_init(const TOKEN_TYPE type) {
     token * t = MALLOC(sizeof(token));
     t->type = type;
     switch (type) {
@@ -39,6 +41,34 @@ token * token_init(TOKEN_TYPE type) {
     }
     
     return t;
+}
+
+void
+token_destroy(token * t) {
+    switch (t->type) {
+        case DOCTYPE:
+            string_buffer_destroy(t->val.doctype.name->data);
+            opt_destroy(t->val.doctype.name);
+            opt_destroy(t->val.doctype.public_id);
+            opt_destroy(t->val.doctype.system_id);
+            break;
+        case START_TAG:
+            vector_destroy(t->val.start_tag.attributes);
+            break;
+        case END_TAG:
+            vector_destroy(t->val.end_tag.attributes);
+            break;
+        case COMMENT:
+            //vector_destroy(t->val.comment.data);
+            break;
+        case CHARACTER:
+            break;
+        case END_OF_FILE:
+            break;
+        default:
+            LOG_ERROR("Can't destroy nonexistant token type");
+    }
+    FREE(t);
 }
 
 

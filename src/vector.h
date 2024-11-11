@@ -2,6 +2,7 @@
 #define VECTOR_MODULE
 
 #include <stdio.h>
+
 typedef struct vector vector;
 
 vector * vector_init(size_t item_size);

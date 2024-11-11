@@ -13,7 +13,7 @@ opt_init(const size_t size) {
 }
 
 void
-opt_free(opt * p) {
+opt_destroy(opt * p) {
     FREE(p->data);
     FREE(p);
 }

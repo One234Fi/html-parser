@@ -10,6 +10,6 @@ typedef struct opt {
 } opt;
 
 opt * opt_init(const size_t size);
-void opt_free(opt * p);
+void opt_destroy(opt * p);
 
 #endif
