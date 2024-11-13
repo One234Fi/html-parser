@@ -1,8 +1,100 @@
 #include "common.h"
 #include "input.h"
-#include "tokenizer.h"
 #include "mem.h"
 #include "vector.h"
+#include <stddef.h>
+#include <stdint.h>
+
+typedef struct HTML_ATTRIBUTE {
+    char* name;
+    char* value;
+} attribute;
+
+typedef struct ATTRIBUTE_LIST {
+    attribute * data;
+    size_t length;
+    size_t max;
+} AttributeList;
+
+typedef enum TOKEN_TYPE {
+    DOCTYPE,
+    START_TAG,
+    END_TAG,
+    COMMENT,
+    CHARACTER,
+    END_OF_FILE,
+    TOKEN_TYPE_COUNT
+} TOKEN_TYPE;
+
+
+//TODO: temporarily put here for token definitions
+typedef struct {
+    char * data;
+    ptrdiff_t len;
+    ptrdiff_t cap;
+} vec_char;
+
+typedef struct  {
+    char * data; 
+    bool exists;
+} opt_str;
+
+typedef struct {
+    int32_t * data;
+    bool exists;
+} opt_int;
+
+typedef struct {
+    attribute * data;
+    ptrdiff_t len;
+    ptrdiff_t cap;
+} vec_attr;
+//TODO: temporarily put here for definitions
+
+struct TOKEN_DOCTYPE {
+    opt_str name;
+    opt_int public_id;
+    opt_int system_id;
+    bool force_quirks;
+};
+
+struct TOKEN_START_TAG {
+    opt_str tag_name;
+    bool self_closing;
+    vec_attr attributes;
+};
+
+struct TOKEN_END_TAG {
+    opt_str tag_name;
+    bool self_closing;
+    vector* attributes;
+};
+
+struct TOKEN_COMMENT {
+    vec_char data;
+};
+
+struct TOKEN_CHARACTER {
+    vec_char data;
+};
+
+struct TOKEN_END_OF_FILE {
+};
+
+union TOKEN_UNION {
+    struct TOKEN_DOCTYPE doctype;
+    struct TOKEN_START_TAG start_tag;
+    struct TOKEN_END_TAG end_tag;
+    struct TOKEN_COMMENT comment;
+    struct TOKEN_CHARACTER character;
+    struct TOKEN_END_OF_FILE eof;
+};
+
+typedef struct TOKEN_STRUCT {
+    union TOKEN_UNION val;
+    enum TOKEN_TYPE type;
+} token;
+
 
 AttributeList * attribute_list_init();
 void attribute_list_destroy(AttributeList * list);
