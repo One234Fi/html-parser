@@ -4,6 +4,7 @@
 #include "vector.h"
 #include <stddef.h>
 #include <stdint.h>
+#include "optional/optional.h"
 
 typedef struct HTML_ATTRIBUTE {
     char* name;
@@ -12,8 +13,8 @@ typedef struct HTML_ATTRIBUTE {
 
 typedef struct ATTRIBUTE_LIST {
     attribute * data;
-    size_t length;
-    size_t max;
+    ptrdiff_t len;
+    ptrdiff_t cap;
 } AttributeList;
 
 typedef enum TOKEN_TYPE {
@@ -24,7 +25,7 @@ typedef enum TOKEN_TYPE {
     CHARACTER,
     END_OF_FILE,
     TOKEN_TYPE_COUNT
-} TOKEN_TYPE;
+} token_type;
 
 
 //TODO: temporarily put here for token definitions
@@ -35,7 +36,7 @@ typedef struct {
 } vec_char;
 
 typedef struct  {
-    char * data; 
+    vec_char * data; 
     bool exists;
 } opt_str;
 
@@ -51,80 +52,109 @@ typedef struct {
 } vec_attr;
 //TODO: temporarily put here for definitions
 
-struct TOKEN_DOCTYPE {
+
+typedef struct token_struct token;
+typedef struct token_vtable {
+    void * (*set_identifier)(token * t, char * val, size_t len);
+    void * (*emit)(token * t);
+} token_vtable;
+struct token_struct {
+    token_vtable * vtable;
+    token_type type;
+};
+
+
+typedef struct token_doctype_vtable {
+    void * (*set_force_quirks)(token * t, bool b);
+} token_doctype_vtable;
+typedef struct TOKEN_DOCTYPE {
+    token token;
     opt_str name;
     opt_int public_id;
     opt_int system_id;
     bool force_quirks;
-};
+    token_doctype_vtable * vtable;
+} token_doctype;
 
-struct TOKEN_START_TAG {
-    opt_str tag_name;
-    bool self_closing;
+
+typedef struct token_tag_vtable {
+    void * (*new_attribute)(token * t);
+    void * (*push_attribute_name)(token * t, char c);
+    void * (*push_attribute_value)(token * t, char c);
+    void * (*set_self_closing)(token * t, bool b);
+} token_tag_vtable;
+typedef struct TOKEN_START_TAG {
+    token token;
+    opt_str name;
     vec_attr attributes;
-};
-
-struct TOKEN_END_TAG {
-    opt_str tag_name;
     bool self_closing;
-    vector* attributes;
-};
+} token_start_tag;
 
-struct TOKEN_COMMENT {
+typedef struct TOKEN_END_TAG {
+    token token;
+    opt_str name;
+    vec_attr attributes;
+    bool self_closing;
+} token_end_tag;
+
+
+typedef struct token_comment_vtable {
+    void * (*push_data)(token * t, char c);
+} token_comment_vtable;
+typedef struct TOKEN_COMMENT {
+    token token;
     vec_char data;
-};
-
-struct TOKEN_CHARACTER {
-    vec_char data;
-};
-
-struct TOKEN_END_OF_FILE {
-};
-
-union TOKEN_UNION {
-    struct TOKEN_DOCTYPE doctype;
-    struct TOKEN_START_TAG start_tag;
-    struct TOKEN_END_TAG end_tag;
-    struct TOKEN_COMMENT comment;
-    struct TOKEN_CHARACTER character;
-    struct TOKEN_END_OF_FILE eof;
-};
-
-typedef struct TOKEN_STRUCT {
-    union TOKEN_UNION val;
-    enum TOKEN_TYPE type;
-} token;
+} token_comment;
 
 
-AttributeList * attribute_list_init();
-void attribute_list_destroy(AttributeList * list);
+typedef struct token_character_vtable {
+    void * (*set_data)(token * t, char c);
+} token_character_vtable;
+typedef struct TOKEN_CHARACTER {
+    token token;
+    char data;
+} token_character;
 
-token * 
-token_init(const TOKEN_TYPE type) {
-    token * t = MALLOC(sizeof(token));
+typedef struct TOKEN_END_OF_FILE {
+    token token;
+} token_eof;
+
+
+token * token_doctype_init();
+token * token_start_tag_init();
+token * token_end_tag_init();
+token * token_comment_init();
+token * token_character_init();
+token * token_eof_init();
+
+
+void emit_token(token * token);
+
+
+token *
+token_init(const token_type type, arena * a) {
+    token * t = new(a, token);
     t->type = type;
     switch (type) {
         case DOCTYPE:
-            t->val.doctype.name = opt_init(sizeof(string_buffer));
-            t->val.doctype.public_id = opt_init(sizeof(int));
-            t->val.doctype.system_id = opt_init(sizeof(int));
+            opt_init(t->val.doctype.name, vec_char, a);
+            opt_init(t->val.doctype.public_id, int32_t, a);
+            opt_init(t->val.doctype.system_id, int32_t, a);
             t->val.doctype.force_quirks = false;
             break;
         case START_TAG:
-            t->val.start_tag.tag_name = opt_init(sizeof(string_buffer));
+            opt_init(t->val.start_tag.tag_name, vec_char, a);
             t->val.start_tag.self_closing = false; 
-            t->val.start_tag.attributes = vector_init(sizeof(attribute)); //TODO: attribute type
             break;
         case END_TAG:
-            t->val.end_tag.tag_name = opt_init(sizeof(string_buffer));
+            opt_init(t->val.end_tag.tag_name, vec_char, a);
             t->val.end_tag.self_closing = false; 
-            t->val.end_tag.attributes = vector_init(sizeof(attribute)); //TODO: attribute type
             break;
         case COMMENT:
-            t->val.comment.data = NULL; //TODO: vec type
+            //vec does not need to be initialized 
             break;
         case CHARACTER:
-            t->val.character.data = NULL; //This might also need to be a vec?...
+            //vec does not need to be initialized 
             break;
         case END_OF_FILE:
             break;
@@ -134,33 +164,4 @@ token_init(const TOKEN_TYPE type) {
     
     return t;
 }
-
-void
-token_destroy(token * t) {
-    switch (t->type) {
-        case DOCTYPE:
-            string_buffer_destroy(t->val.doctype.name->data);
-            opt_destroy(t->val.doctype.name);
-            opt_destroy(t->val.doctype.public_id);
-            opt_destroy(t->val.doctype.system_id);
-            break;
-        case START_TAG:
-            vector_destroy(t->val.start_tag.attributes);
-            break;
-        case END_TAG:
-            vector_destroy(t->val.end_tag.attributes);
-            break;
-        case COMMENT:
-            //vector_destroy(t->val.comment.data);
-            break;
-        case CHARACTER:
-            break;
-        case END_OF_FILE:
-            break;
-        default:
-            LOG_ERROR("Can't destroy nonexistant token type");
-    }
-    FREE(t);
-}
-
 
