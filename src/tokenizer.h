@@ -6,14 +6,9 @@
  * 08/24/2024
  */
 
-#include "input.h"
-#include "option.h"
-#include "vector.h"
-#include <stdbool.h>
-#include <stdlib.h>
+#include "arena.h"
 
-
-void execute();
+void execute(arena * a);
 
 typedef struct parser parser;
 

@@ -7,6 +7,7 @@
 #include "error.h"
 #include "input.h"
 #include "code_point_types.h"
+#include "token/token.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
@@ -28,8 +29,6 @@ static parser parser_t = {
 
 
 //TODO: unimplemented and uncategorized stubs
-extern void emit_token(enum TOKEN_TYPE token_type, int c);
-extern void emit_current_token();
 extern void append_to_current_tag_token_name(int c);
 extern void clear_temporary_buffer();
 extern void append_to_temp_buffer(int c);
@@ -90,28 +89,19 @@ void set_current_token(token* tkn) {
     parser_t.current_token = tkn;
 }
 
-token* token_init(enum TOKEN_TYPE token_type) {
-    ASSERT(token_type < TOKEN_TYPE_COUNT, "Can't create token of undefined type", NULL);
-    token* tkn;
-    ALLOCATE(tkn, sizeof(token));
+token * get_current_token() {
+    return parser_t.current_token;
+}
 
-    tkn->type = token_type;
-    switch (token_type) {
-        case DOCTYPE: 
-            tkn->val.doctype.name = NULL; 
-            tkn->val.doctype.public_id = 0; 
-            tkn->val.doctype.system_id = 0; 
-            tkn->val.doctype.force_quirks = false; 
-            break;
-        case START_TAG:
-        case END_TAG:
-        case COMMENT:
-        case CHARACTER:
-        case END_OF_FILE:
-        case TOKEN_TYPE_COUNT:
+void emit_current_token(token_type expected) {
+    token * t = get_current_token();
+    if (expected < TOKEN_TYPE_COUNT && expected != t->type) {
+        LOG_WARN("Emitting unexpected token type!");
+    } else if (expected == TOKEN_TAG && !(t->type == START_TAG || t->type == END_TAG)) {
+        LOG_WARN("Emitting unexpected token type!");
     }
 
-    return NULL;
+    emit_token(get_current_token());
 }
 
 void character_token_emit(const int c) {
@@ -125,8 +115,6 @@ void eof_token_emit() {
 }
 
 void append_to_current_tag_token_name(int c) {
-    ASSERT()
-    string_buffer_push_back(&parser_t.current_token, c);
 }
 
 char* state_to_string(enum TOKENIZER_STATE_TYPE state) {
@@ -223,175 +211,175 @@ void LOG_CURRENT_STATE() {
 }
 
 //state handlers
-void data_state();
-void rcdata_state();
-void rawtext_state();
-void script_data_state();
-void plaintext_state();
-void tag_open_state();
-void end_tag_open_state();
-void tag_name_state();
-void rcdata_less_than_sign_state();
-void rcdata_end_tag_open_state();
-void rcdata_end_tag_name_state();
-void rawtext_less_than_sign_state();
-void rawtext_end_tag_open_state();
-void rawtext_end_tag_name_state();
-void script_data_less_than_sign_state();
-void script_data_end_tag_open_state();
-void script_data_end_tag_name_state();
-void script_data_escape_start_state();
-void script_data_escape_start_dash_state();
-void script_data_escaped_state();
-void script_data_escaped_dash_state();
-void script_data_escaped_dash_dash_state();
-void script_data_escaped_less_than_sign_state();
-void script_data_escaped_end_tag_open_state();
-void script_data_escaped_end_tag_name_state();
-void script_data_double_escape_start_state();
-void script_data_double_escaped_state();
-void script_data_double_escaped_dash_state();
-void script_data_double_escaped_dash_dash_state();
-void script_data_double_escaped_less_than_sign_state();
-void script_data_double_escape_end_state();
-void before_attribute_name_state();
-void attribute_name_state();
-void after_attribute_name_state();
-void before_attribute_value_state();
-void attribute_value_double_quoted_state();
-void attribute_value_single_quoted_state();
-void attribute_value_unquoted_state();
-void after_attribute_value_quoted_state();
-void self_closing_start_tag_state();
-void bogus_comment_state();
-void markup_declaration_open_state();
-void comment_start_state();
-void comment_start_dash_state();
-void comment_state();
-void comment_less_than_sign_state();
-void comment_less_than_sign_bang_state();
-void comment_less_than_sign_bang_dash_state();
-void comment_less_than_sign_bang_dash_dash_state();
-void comment_end_dash_state();
-void comment_end_state();
-void comment_end_bang_state();
-void doctype_state();
-void before_doctype_name_state();
-void doctype_name_state();
-void after_doctype_name_state();
-void after_doctype_public_keyword_state();
-void before_doctype_public_identifier_state();
-void doctype_public_identifier_double_quoted_state();
-void doctype_public_identifier_single_quoted_state();
-void after_doctype_public_identifier_state();
-void between_doctype_public_and_system_identifiers_state();
-void after_doctype_system_keyword_state();
-void before_doctype_system_identifier_state();
-void doctype_system_identifier_double_quoted_state();
-void doctype_system_identifier_single_quoted_state();
-void after_doctype_system_identifier_state();
-void bogus_doctype_state();
-void cdata_section_state();
-void cdata_section_bracket_state();
-void cdata_section_end_state();
-void character_reference_state();
-void named_character_reference_state();
-void ambiguous_ampersand_state();
-void numeric_character_reference_state();
-void hexadecimal_character_reference_start_state();
-void decimal_character_reference_start_state();
-void hexadecimal_character_reference_state();
-void decimal_character_reference_state();
-void numeric_character_reference_end_state();
+void data_state(arena * a);
+void rcdata_state(arena * a);
+void rawtext_state(arena * a);
+void script_data_state(arena * a);
+void plaintext_state(arena * a);
+void tag_open_state(arena * a);
+void end_tag_open_state(arena * a);
+void tag_name_state(arena * a);
+void rcdata_less_than_sign_state(arena * a);
+void rcdata_end_tag_open_state(arena * a);
+void rcdata_end_tag_name_state(arena * a);
+void rawtext_less_than_sign_state(arena * a);
+void rawtext_end_tag_open_state(arena * a);
+void rawtext_end_tag_name_state(arena * a);
+void script_data_less_than_sign_state(arena * a);
+void script_data_end_tag_open_state(arena * a);
+void script_data_end_tag_name_state(arena * a);
+void script_data_escape_start_state(arena * a);
+void script_data_escape_start_dash_state(arena * a);
+void script_data_escaped_state(arena * a);
+void script_data_escaped_dash_state(arena * a);
+void script_data_escaped_dash_dash_state(arena * a);
+void script_data_escaped_less_than_sign_state(arena * a);
+void script_data_escaped_end_tag_open_state(arena * a);
+void script_data_escaped_end_tag_name_state(arena * a);
+void script_data_double_escape_start_state(arena * a);
+void script_data_double_escaped_state(arena * a);
+void script_data_double_escaped_dash_state(arena * a);
+void script_data_double_escaped_dash_dash_state(arena * a);
+void script_data_double_escaped_less_than_sign_state(arena * a);
+void script_data_double_escape_end_state(arena * a);
+void before_attribute_name_state(arena * a);
+void attribute_name_state(arena * a);
+void after_attribute_name_state(arena * a);
+void before_attribute_value_state(arena * a);
+void attribute_value_double_quoted_state(arena * a);
+void attribute_value_single_quoted_state(arena * a);
+void attribute_value_unquoted_state(arena * a);
+void after_attribute_value_quoted_state(arena * a);
+void self_closing_start_tag_state(arena * a);
+void bogus_comment_state(arena * a);
+void markup_declaration_open_state(arena * a);
+void comment_start_state(arena * a);
+void comment_start_dash_state(arena * a);
+void comment_state(arena * a);
+void comment_less_than_sign_state(arena * a);
+void comment_less_than_sign_bang_state(arena * a);
+void comment_less_than_sign_bang_dash_state(arena * a);
+void comment_less_than_sign_bang_dash_dash_state(arena * a);
+void comment_end_dash_state(arena * a);
+void comment_end_state(arena * a);
+void comment_end_bang_state(arena * a);
+void doctype_state(arena * a);
+void before_doctype_name_state(arena * a);
+void doctype_name_state(arena * a);
+void after_doctype_name_state(arena * a);
+void after_doctype_public_keyword_state(arena * a);
+void before_doctype_public_identifier_state(arena * a);
+void doctype_public_identifier_double_quoted_state(arena * a);
+void doctype_public_identifier_single_quoted_state(arena * a);
+void after_doctype_public_identifier_state(arena * a);
+void between_doctype_public_and_system_identifiers_state(arena * a);
+void after_doctype_system_keyword_state(arena * a);
+void before_doctype_system_identifier_state(arena * a);
+void doctype_system_identifier_double_quoted_state(arena * a);
+void doctype_system_identifier_single_quoted_state(arena * a);
+void after_doctype_system_identifier_state(arena * a);
+void bogus_doctype_state(arena * a);
+void cdata_section_state(arena * a);
+void cdata_section_bracket_state(arena * a);
+void cdata_section_end_state(arena * a);
+void character_reference_state(arena * a);
+void named_character_reference_state(arena * a);
+void ambiguous_ampersand_state(arena * a);
+void numeric_character_reference_state(arena * a);
+void hexadecimal_character_reference_start_state(arena * a);
+void decimal_character_reference_start_state(arena * a);
+void hexadecimal_character_reference_state(arena * a);
+void decimal_character_reference_state(arena * a);
+void numeric_character_reference_end_state(arena * a);
 
-void execute() {
+void execute(arena * a) {
     LOG_CURRENT_STATE();
     switch (get_state()) {
-        case DATA_STATE: data_state(); break;
-        case RCDATA_STATE: rcdata_state(); break;
-        case RAWTEXT_STATE: rawtext_state(); break;
-        case SCRIPT_DATA_STATE: script_data_state(); break;
-        case PLAINTEXT_STATE: plaintext_state(); break;
-        case TAG_OPEN_STATE: tag_open_state(); break;
-        case END_TAG_OPEN_STATE: end_tag_open_state(); break;
-        case TAG_NAME_STATE: tag_name_state(); break;
-        case RCDATA_LESS_THAN_SIGN_STATE: rcdata_less_than_sign_state(); break;
-        case RCDATA_END_TAG_OPEN_STATE: rcdata_end_tag_open_state(); break;
-        case RCDATA_END_TAG_NAME_STATE: rcdata_end_tag_name_state(); break;
-        case RAWTEXT_LESS_THAN_SIGN_STATE: rawtext_less_than_sign_state(); break;
-        case RAWTEXT_END_TAG_OPEN_STATE: rawtext_end_tag_open_state(); break;
-        case RAWTEXT_END_TAG_NAME_STATE: rawtext_end_tag_name_state(); break;
-        case SCRIPT_DATA_LESS_THAN_SIGN_STATE: script_data_less_than_sign_state(); break;
-        case SCRIPT_DATA_END_TAG_OPEN_STATE: script_data_end_tag_open_state(); break;
-        case SCRIPT_DATA_END_TAG_NAME_STATE: script_data_end_tag_name_state(); break;
-        case SCRIPT_DATA_ESCAPE_START_STATE: script_data_escape_start_state(); break;
-        case SCRIPT_DATA_ESCAPE_START_DASH_STATE: script_data_escape_start_dash_state(); break;
-        case SCRIPT_DATA_ESCAPED_STATE: script_data_escaped_state(); break;
-        case SCRIPT_DATA_ESCAPED_DASH_STATE: script_data_escaped_dash_state(); break;
-        case SCRIPT_DATA_ESCAPED_DASH_DASH_STATE: script_data_escaped_dash_dash_state(); break;
-        case SCRIPT_DATA_ESCAPED_LESS_THAN_SIGN_STATE: script_data_escaped_less_than_sign_state(); break;
-        case SCRIPT_DATA_ESCAPED_END_TAG_OPEN_STATE: script_data_escaped_end_tag_open_state(); break;
-        case SCRIPT_DATA_ESCAPED_END_TAG_NAME_STATE: script_data_escaped_end_tag_name_state(); break;
-        case SCRIPT_DATA_DOUBLE_ESCAPE_START_STATE: script_data_double_escape_start_state(); break;
-        case SCRIPT_DATA_DOUBLE_ESCAPED_STATE: script_data_double_escaped_state(); break;
-        case SCRIPT_DATA_DOUBLE_ESCAPED_DASH_STATE: script_data_double_escaped_dash_state(); break;
-        case SCRIPT_DATA_DOUBLE_ESCAPED_DASH_DASH_STATE: script_data_double_escaped_dash_dash_state(); break;
-        case SCRIPT_DATA_DOUBLE_ESCAPED_LESS_THAN_SIGN_STATE: script_data_double_escaped_less_than_sign_state(); break;
-        case SCRIPT_DATA_DOUBLE_ESCAPE_END_STATE: script_data_double_escape_end_state(); break;
-        case BEFORE_ATTRIBUTE_NAME_STATE: before_attribute_name_state(); break;
-        case ATTRIBUTE_NAME_STATE: attribute_name_state(); break;
-        case AFTER_ATTRIBUTE_NAME_STATE: after_attribute_name_state(); break;
-        case BEFORE_ATTRIBUTE_VALUE_STATE: before_attribute_value_state(); break;
-        case ATTRIBUTE_VALUE_DOUBLE_QUOTED_STATE: attribute_value_double_quoted_state(); break;
-        case ATTRIBUTE_VALUE_SINGLE_QUOTED_STATE: attribute_value_single_quoted_state(); break;
-        case ATTRIBUTE_VALUE_UNQUOTED_STATE: attribute_value_unquoted_state(); break;
-        case AFTER_ATTRIBUTE_VALUE_QUOTED_STATE: after_attribute_value_quoted_state(); break;
-        case SELF_CLOSING_START_TAG_STATE: self_closing_start_tag_state(); break;
-        case BOGUS_COMMENT_STATE: bogus_comment_state(); break;
-        case MARKUP_DECLARATION_OPEN_STATE: markup_declaration_open_state(); break;
-        case COMMENT_START_STATE: comment_start_state(); break;
-        case COMMENT_START_DASH_STATE: comment_start_dash_state(); break;
-        case COMMENT_STATE: comment_state(); break;
-        case COMMENT_LESS_THAN_SIGN_STATE: comment_less_than_sign_state(); break;
-        case COMMENT_LESS_THAN_SIGN_BANG_STATE: comment_less_than_sign_bang_state(); break;
-        case COMMENT_LESS_THAN_SIGN_BANG_DASH_STATE: comment_less_than_sign_bang_dash_state(); break;
-        case COMMENT_LESS_THAN_SIGN_BANG_DASH_DASH_STATE: comment_less_than_sign_bang_dash_dash_state(); break;
-        case COMMENT_END_DASH_STATE: comment_end_dash_state(); break;
-        case COMMENT_END_STATE: comment_end_state(); break;
-        case COMMENT_END_BANG_STATE: comment_end_bang_state(); break;
-        case DOCTYPE_STATE: doctype_state(); break;
-        case BEFORE_DOCTYPE_NAME_STATE: before_doctype_name_state(); break;
-        case DOCTYPE_NAME_STATE: doctype_name_state(); break;
-        case AFTER_DOCTYPE_NAME_STATE: after_doctype_name_state(); break;
-        case AFTER_DOCTYPE_PUBLIC_KEYWORD_STATE: after_doctype_public_keyword_state(); break;
-        case BEFORE_DOCTYPE_PUBLIC_IDENTIFIER_STATE: before_doctype_public_identifier_state(); break;
-        case DOCTYPE_PUBLIC_IDENTIFIER_DOUBLE_QUOTED_STATE: doctype_public_identifier_double_quoted_state(); break;
-        case DOCTYPE_PUBLIC_IDENTIFIER_SINGLE_QUOTED_STATE: doctype_public_identifier_single_quoted_state(); break;
-        case AFTER_DOCTYPE_PUBLIC_IDENTIFIER_STATE: after_doctype_public_identifier_state(); break;
-        case BETWEEN_DOCTYPE_PUBLIC_AND_SYSTEM_IDENTIFIERS_STATE: between_doctype_public_and_system_identifiers_state(); break;
-        case AFTER_DOCTYPE_SYSTEM_KEYWORD_STATE: after_doctype_system_keyword_state(); break;
-        case BEFORE_DOCTYPE_SYSTEM_IDENTIFIER_STATE: before_doctype_system_identifier_state(); break;
-        case DOCTYPE_SYSTEM_IDENTIFIER_DOUBLE_QUOTED_STATE: doctype_system_identifier_double_quoted_state(); break;
-        case DOCTYPE_SYSTEM_IDENTIFIER_SINGLE_QUOTED_STATE: doctype_system_identifier_single_quoted_state(); break;
-        case AFTER_DOCTYPE_SYSTEM_IDENTIFIER_STATE: after_doctype_system_identifier_state(); break;
-        case BOGUS_DOCTYPE_STATE: bogus_doctype_state(); break;
-        case CDATA_SECTION_STATE: cdata_section_state(); break;
-        case CDATA_SECTION_BRACKET_STATE: cdata_section_bracket_state(); break;
-        case CDATA_SECTION_END_STATE: cdata_section_end_state(); break;
-        case CHARACTER_REFERENCE_STATE: character_reference_state(); break;
-        case NAMED_CHARACTER_REFERENCE_STATE: named_character_reference_state(); break;
-        case AMBIGUOUS_AMPERSAND_STATE: ambiguous_ampersand_state(); break;
-        case NUMERIC_CHARACTER_REFERENCE_STATE: numeric_character_reference_state(); break;
-        case HEXADECIMAL_CHARACTER_REFERENCE_START_STATE: hexadecimal_character_reference_start_state(); break;
-        case DECIMAL_CHARACTER_REFERENCE_START_STATE: decimal_character_reference_start_state(); break;
-        case HEXADECIMAL_CHARACTER_REFERENCE_STATE: hexadecimal_character_reference_state(); break;
-        case DECIMAL_CHARACTER_REFERENCE_STATE: decimal_character_reference_state(); break;
-        case NUMERIC_CHARACTER_REFERENCE_END_STATE: numeric_character_reference_end_state(); break;
+        case DATA_STATE: data_state(a); break;
+        case RCDATA_STATE: rcdata_state(a); break;
+        case RAWTEXT_STATE: rawtext_state(a); break;
+        case SCRIPT_DATA_STATE: script_data_state(a); break;
+        case PLAINTEXT_STATE: plaintext_state(a); break;
+        case TAG_OPEN_STATE: tag_open_state(a); break;
+        case END_TAG_OPEN_STATE: end_tag_open_state(a); break;
+        case TAG_NAME_STATE: tag_name_state(a); break;
+        case RCDATA_LESS_THAN_SIGN_STATE: rcdata_less_than_sign_state(a); break;
+        case RCDATA_END_TAG_OPEN_STATE: rcdata_end_tag_open_state(a); break;
+        case RCDATA_END_TAG_NAME_STATE: rcdata_end_tag_name_state(a); break;
+        case RAWTEXT_LESS_THAN_SIGN_STATE: rawtext_less_than_sign_state(a); break;
+        case RAWTEXT_END_TAG_OPEN_STATE: rawtext_end_tag_open_state(a); break;
+        case RAWTEXT_END_TAG_NAME_STATE: rawtext_end_tag_name_state(a); break;
+        case SCRIPT_DATA_LESS_THAN_SIGN_STATE: script_data_less_than_sign_state(a); break;
+        case SCRIPT_DATA_END_TAG_OPEN_STATE: script_data_end_tag_open_state(a); break;
+        case SCRIPT_DATA_END_TAG_NAME_STATE: script_data_end_tag_name_state(a); break;
+        case SCRIPT_DATA_ESCAPE_START_STATE: script_data_escape_start_state(a); break;
+        case SCRIPT_DATA_ESCAPE_START_DASH_STATE: script_data_escape_start_dash_state(a); break;
+        case SCRIPT_DATA_ESCAPED_STATE: script_data_escaped_state(a); break;
+        case SCRIPT_DATA_ESCAPED_DASH_STATE: script_data_escaped_dash_state(a); break;
+        case SCRIPT_DATA_ESCAPED_DASH_DASH_STATE: script_data_escaped_dash_dash_state(a); break;
+        case SCRIPT_DATA_ESCAPED_LESS_THAN_SIGN_STATE: script_data_escaped_less_than_sign_state(a); break;
+        case SCRIPT_DATA_ESCAPED_END_TAG_OPEN_STATE: script_data_escaped_end_tag_open_state(a); break;
+        case SCRIPT_DATA_ESCAPED_END_TAG_NAME_STATE: script_data_escaped_end_tag_name_state(a); break;
+        case SCRIPT_DATA_DOUBLE_ESCAPE_START_STATE: script_data_double_escape_start_state(a); break;
+        case SCRIPT_DATA_DOUBLE_ESCAPED_STATE: script_data_double_escaped_state(a); break;
+        case SCRIPT_DATA_DOUBLE_ESCAPED_DASH_STATE: script_data_double_escaped_dash_state(a); break;
+        case SCRIPT_DATA_DOUBLE_ESCAPED_DASH_DASH_STATE: script_data_double_escaped_dash_dash_state(a); break;
+        case SCRIPT_DATA_DOUBLE_ESCAPED_LESS_THAN_SIGN_STATE: script_data_double_escaped_less_than_sign_state(a); break;
+        case SCRIPT_DATA_DOUBLE_ESCAPE_END_STATE: script_data_double_escape_end_state(a); break;
+        case BEFORE_ATTRIBUTE_NAME_STATE: before_attribute_name_state(a); break;
+        case ATTRIBUTE_NAME_STATE: attribute_name_state(a); break;
+        case AFTER_ATTRIBUTE_NAME_STATE: after_attribute_name_state(a); break;
+        case BEFORE_ATTRIBUTE_VALUE_STATE: before_attribute_value_state(a); break;
+        case ATTRIBUTE_VALUE_DOUBLE_QUOTED_STATE: attribute_value_double_quoted_state(a); break;
+        case ATTRIBUTE_VALUE_SINGLE_QUOTED_STATE: attribute_value_single_quoted_state(a); break;
+        case ATTRIBUTE_VALUE_UNQUOTED_STATE: attribute_value_unquoted_state(a); break;
+        case AFTER_ATTRIBUTE_VALUE_QUOTED_STATE: after_attribute_value_quoted_state(a); break;
+        case SELF_CLOSING_START_TAG_STATE: self_closing_start_tag_state(a); break;
+        case BOGUS_COMMENT_STATE: bogus_comment_state(a); break;
+        case MARKUP_DECLARATION_OPEN_STATE: markup_declaration_open_state(a); break;
+        case COMMENT_START_STATE: comment_start_state(a); break;
+        case COMMENT_START_DASH_STATE: comment_start_dash_state(a); break;
+        case COMMENT_STATE: comment_state(a); break;
+        case COMMENT_LESS_THAN_SIGN_STATE: comment_less_than_sign_state(a); break;
+        case COMMENT_LESS_THAN_SIGN_BANG_STATE: comment_less_than_sign_bang_state(a); break;
+        case COMMENT_LESS_THAN_SIGN_BANG_DASH_STATE: comment_less_than_sign_bang_dash_state(a); break;
+        case COMMENT_LESS_THAN_SIGN_BANG_DASH_DASH_STATE: comment_less_than_sign_bang_dash_dash_state(a); break;
+        case COMMENT_END_DASH_STATE: comment_end_dash_state(a); break;
+        case COMMENT_END_STATE: comment_end_state(a); break;
+        case COMMENT_END_BANG_STATE: comment_end_bang_state(a); break;
+        case DOCTYPE_STATE: doctype_state(a); break;
+        case BEFORE_DOCTYPE_NAME_STATE: before_doctype_name_state(a); break;
+        case DOCTYPE_NAME_STATE: doctype_name_state(a); break;
+        case AFTER_DOCTYPE_NAME_STATE: after_doctype_name_state(a); break;
+        case AFTER_DOCTYPE_PUBLIC_KEYWORD_STATE: after_doctype_public_keyword_state(a); break;
+        case BEFORE_DOCTYPE_PUBLIC_IDENTIFIER_STATE: before_doctype_public_identifier_state(a); break;
+        case DOCTYPE_PUBLIC_IDENTIFIER_DOUBLE_QUOTED_STATE: doctype_public_identifier_double_quoted_state(a); break;
+        case DOCTYPE_PUBLIC_IDENTIFIER_SINGLE_QUOTED_STATE: doctype_public_identifier_single_quoted_state(a); break;
+        case AFTER_DOCTYPE_PUBLIC_IDENTIFIER_STATE: after_doctype_public_identifier_state(a); break;
+        case BETWEEN_DOCTYPE_PUBLIC_AND_SYSTEM_IDENTIFIERS_STATE: between_doctype_public_and_system_identifiers_state(a); break;
+        case AFTER_DOCTYPE_SYSTEM_KEYWORD_STATE: after_doctype_system_keyword_state(a); break;
+        case BEFORE_DOCTYPE_SYSTEM_IDENTIFIER_STATE: before_doctype_system_identifier_state(a); break;
+        case DOCTYPE_SYSTEM_IDENTIFIER_DOUBLE_QUOTED_STATE: doctype_system_identifier_double_quoted_state(a); break;
+        case DOCTYPE_SYSTEM_IDENTIFIER_SINGLE_QUOTED_STATE: doctype_system_identifier_single_quoted_state(a); break;
+        case AFTER_DOCTYPE_SYSTEM_IDENTIFIER_STATE: after_doctype_system_identifier_state(a); break;
+        case BOGUS_DOCTYPE_STATE: bogus_doctype_state(a); break;
+        case CDATA_SECTION_STATE: cdata_section_state(a); break;
+        case CDATA_SECTION_BRACKET_STATE: cdata_section_bracket_state(a); break;
+        case CDATA_SECTION_END_STATE: cdata_section_end_state(a); break;
+        case CHARACTER_REFERENCE_STATE: character_reference_state(a); break;
+        case NAMED_CHARACTER_REFERENCE_STATE: named_character_reference_state(a); break;
+        case AMBIGUOUS_AMPERSAND_STATE: ambiguous_ampersand_state(a); break;
+        case NUMERIC_CHARACTER_REFERENCE_STATE: numeric_character_reference_state(a); break;
+        case HEXADECIMAL_CHARACTER_REFERENCE_START_STATE: hexadecimal_character_reference_start_state(a); break;
+        case DECIMAL_CHARACTER_REFERENCE_START_STATE: decimal_character_reference_start_state(a); break;
+        case HEXADECIMAL_CHARACTER_REFERENCE_STATE: hexadecimal_character_reference_state(a); break;
+        case DECIMAL_CHARACTER_REFERENCE_STATE: decimal_character_reference_state(a); break;
+        case NUMERIC_CHARACTER_REFERENCE_END_STATE: numeric_character_reference_end_state(a); break;
         default: LOG_ERROR(err_to_str(INVALID_TOKENIZER_STATE_ERROR));
     }
 }
 
-void data_state() {
+void data_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '&': 
@@ -403,17 +391,20 @@ void data_state() {
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
-            character_token_emit(c);
+            character_token_emit(c); //logging
+            emit_token(token_character_init(a, c));
             break;
         case EOF:
-            eof_token_emit();
+            eof_token_emit(); //logging
+            emit_token(token_eof_init(a));
             break;
         default:
-            character_token_emit(c);
+            character_token_emit(c); //logging
+            emit_token(token_character_init(a, c));
     }
 }
 
-void rcdata_state() {
+void rcdata_state(arena * a) {
     int c = input_system_consume();
     switch(c) {
         case '&':
@@ -426,16 +417,19 @@ void rcdata_state() {
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             character_token_emit(UNICODE_REPLACEMENT_CHAR); 
+            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             character_token_emit(c);
+            emit_token(token_character_init(a, c));
     }
 }
 
-void rawtext_state() {
+void rawtext_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '<':
@@ -444,16 +438,19 @@ void rawtext_state() {
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             character_token_emit(UNICODE_REPLACEMENT_CHAR); 
+            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             character_token_emit(c);
+            emit_token(token_character_init(a, c));
     }
 }
 
-void script_data_state() {
+void script_data_state(arena * a) {
     int c = input_system_consume();
     switch(c) {
         case '<':
@@ -462,31 +459,37 @@ void script_data_state() {
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             character_token_emit(UNICODE_REPLACEMENT_CHAR); 
+            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             character_token_emit(c);
+            emit_token(token_character_init(a, c));
     }
 }
 
-void plaintext_state() {
+void plaintext_state(arena * a) {
     int c = input_system_consume();
     switch(c) {
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             character_token_emit(UNICODE_REPLACEMENT_CHAR); 
+            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             character_token_emit(c);
+            emit_token(token_character_init(a, c));
     }
 }
 
-void tag_open_state() {
+void tag_open_state(arena * a) {
     int c = input_system_consume();
     switch(c) {
         case '!':
@@ -497,31 +500,34 @@ void tag_open_state() {
             break;
         case '?':
             LOG_ERROR(err_to_str(UNEXPECTED_QUESTION_MARK_INSTEAD_OF_TAG_NAME_PARSE_ERROR));
-            set_current_token(token_init(COMMENT));
+            set_current_token(token_comment_init(a));
             input_system_reconsume(c);
             set_state(BOGUS_COMMENT_STATE);
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_BEFORE_TAG_NAME_PARSE_ERROR));
             character_token_emit('<');
+            emit_token(token_character_init(a, '<'));
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             if (is_ascii_alpha(c)) {
-                set_current_token(token_init(START_TAG));
+                set_current_token(token_start_tag_init(a));
                 input_system_reconsume(c);
                 set_state(TAG_NAME_STATE);
                 return;
             } else {
                 LOG_ERROR(err_to_str(INVALID_FIRST_CHARACTER_OF_TAG_NAME_PARSE_ERROR));
                 character_token_emit('<');
+                emit_token(token_character_init(a, '<'));
                 input_system_reconsume(c);
                 set_state(DATA_STATE);
             }
     }
 }
 
-void end_tag_open_state() {
+void end_tag_open_state(arena * a) {
     int c = input_system_consume();
     switch(c) {
         case '>':
@@ -532,22 +538,24 @@ void end_tag_open_state() {
             LOG_ERROR(err_to_str(EOF_BEFORE_TAG_NAME_PARSE_ERROR));
             character_token_emit('/');
             eof_token_emit();
+            emit_token(token_character_init(a, '/'));
+            emit_token(token_eof_init(a));
             break;
         default:
             if (is_ascii_alpha(c)) {
-                set_current_token(token_init(END_TAG));
+                set_current_token(token_end_tag_init(a));
                 input_system_reconsume(c);
                 set_state(TAG_NAME_STATE);
             } else {
                 LOG_ERROR(err_to_str(INVALID_FIRST_CHARACTER_OF_TAG_NAME_PARSE_ERROR));
-                set_current_token(token_init(COMMENT));
+                set_current_token(token_comment_init(a));
                 input_system_reconsume(c);
                 set_state(BOGUS_COMMENT_STATE);
             }
     }
 }
 
-void tag_name_state() {
+void tag_name_state(arena * a) {
     int c = input_system_consume();
     switch(c) {
         case '\t':
@@ -561,7 +569,7 @@ void tag_name_state() {
             break;
         case '>':
             set_state(DATA_STATE);
-            emit_current_token(); //emit current tag token
+            emit_token(get_current_token()); //emit current tag token
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
@@ -570,6 +578,7 @@ void tag_name_state() {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_TAG_PARSE_ERROR));
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             if (is_ascii_upper_alpha(c)) {
@@ -580,33 +589,36 @@ void tag_name_state() {
     }
 }
 
-void rcdata_less_than_sign_state() {
+void rcdata_less_than_sign_state(arena * a) {
     int c = input_system_consume();
     if (c == '/') {
         clear_temporary_buffer(); //set temp buffer to ""
         set_state(RCDATA_END_TAG_OPEN_STATE);
     } else {
         character_token_emit('<');
+        emit_token(token_character_init(a, '<'));
         input_system_reconsume(c);
         set_state(RCDATA_STATE);
     }
 }
 
-void rcdata_end_tag_open_state() {
+void rcdata_end_tag_open_state(arena * a) {
     int c = input_system_consume();
     if (is_ascii_alpha(c)) {
-        set_current_token(token_init(END_TAG));
+        set_current_token(token_eof_init(a));
         input_system_reconsume(c);
         set_state(RCDATA_END_TAG_NAME_STATE);
     } else {
         character_token_emit('<');
         character_token_emit('/');
+        emit_token(token_character_init(a, '<'));
+        emit_token(token_character_init(a, '/'));
         input_system_reconsume(c);
-        rcdata_state();
+        set_state(RCDATA_STATE);
     }
 }
 
-void rcdata_end_tag_name_state() {
+void rcdata_end_tag_name_state(arena * a) {
     int c = input_system_consume();
     switch(c) {
         case '\t':
@@ -618,6 +630,8 @@ void rcdata_end_tag_name_state() {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
+                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init(a, '/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(c);
                 set_state(RCDATA_STATE);
@@ -629,6 +643,8 @@ void rcdata_end_tag_name_state() {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
+                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init(a, '/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(c);
                 set_state(RCDATA_STATE);
@@ -640,6 +656,8 @@ void rcdata_end_tag_name_state() {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
+                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init(a, '/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(c);
                 set_state(RCDATA_STATE);
@@ -655,6 +673,8 @@ void rcdata_end_tag_name_state() {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
+                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init(a, '/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(c);
                 set_state(RCDATA_STATE);
@@ -662,32 +682,34 @@ void rcdata_end_tag_name_state() {
     }
 }
 
-void rawtext_less_than_sign_state() {
+void rawtext_less_than_sign_state(arena * a) {
     int c = input_system_consume();
     if (c == '/') {
         clear_temporary_buffer();
         set_state(RAWTEXT_END_TAG_OPEN_STATE);
     } else {
         character_token_emit('<');
+        emit_token(token_character_init(a, '<'));
         input_system_reconsume(c);
         set_state(RAWTEXT_STATE);
     }
 }
 
-void rawtext_end_tag_open_state() {
+void rawtext_end_tag_open_state(arena * a) {
     int c = input_system_consume();
     if (is_ascii_alpha(c)) {
-        set_current_token(token_init(END_TAG));
+        set_current_token(token_eof_init(a));
         input_system_reconsume(c);
         set_state(SCRIPT_DATA_END_TAG_NAME_STATE);
     } else {
         character_token_emit('/');
+        emit_token(token_character_init(a, '/'));
         input_system_reconsume(c);
         set_state(SCRIPT_DATA_STATE);
     }
 }
 
-void rawtext_end_tag_name_state() {
+void rawtext_end_tag_name_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -699,6 +721,8 @@ void rawtext_end_tag_name_state() {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
+                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init(a, '/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(c);
                 set_state(RAWTEXT_STATE);
@@ -710,6 +734,8 @@ void rawtext_end_tag_name_state() {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
+                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init(a, '/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(c);
                 set_state(DATA_STATE);
@@ -721,6 +747,8 @@ void rawtext_end_tag_name_state() {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
+                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init(a, '/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(c);
                 set_state(DATA_STATE);
@@ -736,6 +764,8 @@ void rawtext_end_tag_name_state() {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
+                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init(a, '/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(c);
                 set_state(RAWTEXT_STATE);
@@ -743,7 +773,7 @@ void rawtext_end_tag_name_state() {
     }
 }
 
-void script_data_less_than_sign_state() {
+void script_data_less_than_sign_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '/':
@@ -754,28 +784,33 @@ void script_data_less_than_sign_state() {
             set_state(SCRIPT_DATA_ESCAPE_START_STATE);
             character_token_emit('<');
             character_token_emit('!');
+            emit_token(token_character_init(a, '<'));
+            emit_token(token_character_init(a, '!'));
             break;
         default:
             character_token_emit('<');
+            emit_token(token_character_init(a, '<'));
             set_state(SCRIPT_DATA_STATE);
     }
 }
 
-void script_data_end_tag_open_state() {
+void script_data_end_tag_open_state(arena * a) {
     int c = input_system_consume();
     if (is_ascii_alpha(c)) {
-        set_current_token(token_init(END_TAG));
+        set_current_token(token_end_tag_init(a));
         input_system_reconsume(c);
         set_state(SCRIPT_DATA_END_TAG_NAME_STATE);
     } else {
         character_token_emit('<');
         character_token_emit('/');
+        emit_token(token_character_init(a, '<'));
+        emit_token(token_character_init(a, '/'));
         input_system_reconsume(c);
         set_state(SCRIPT_DATA_STATE);
     }
 }
 
-void script_data_end_tag_name_state() {
+void script_data_end_tag_name_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -787,6 +822,8 @@ void script_data_end_tag_name_state() {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
+                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init(a, '/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(c);
                 set_state(SCRIPT_DATA_STATE);
@@ -798,6 +835,8 @@ void script_data_end_tag_name_state() {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
+                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init(a, '/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(c);
                 set_state(SCRIPT_DATA_STATE);
@@ -809,6 +848,8 @@ void script_data_end_tag_name_state() {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
+                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init(a, '/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(c);
                 set_state(SCRIPT_DATA_STATE);
@@ -824,6 +865,8 @@ void script_data_end_tag_name_state() {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
+                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init(a, '/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(c);
                 set_state(SCRIPT_DATA_STATE);
@@ -831,34 +874,37 @@ void script_data_end_tag_name_state() {
     }
 }
 
-void script_data_escape_start_state() {
+void script_data_escape_start_state(arena * a) {
     int c = input_system_consume();
     if (c == '-') {
         set_state(SCRIPT_DATA_ESCAPE_START_DASH_STATE);
         character_token_emit('-');
+        emit_token(token_character_init(a, '-'));
     } else {
         input_system_reconsume(c);
         set_state(SCRIPT_DATA_STATE);
     }
 }
 
-void script_data_escape_start_dash_state() {
+void script_data_escape_start_dash_state(arena * a) {
     int c = input_system_consume();
     if (c == '-') {
         set_state(SCRIPT_DATA_ESCAPED_DASH_DASH_STATE);
         character_token_emit('-');
+        emit_token(token_character_init(a, '-'));
     } else {
         input_system_reconsume(c);
         set_state(SCRIPT_DATA_STATE);
     }
 }
 
-void script_data_escaped_state() {
+void script_data_escaped_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '-':
             set_state(SCRIPT_DATA_ESCAPED_DASH_STATE);
             character_token_emit('-');
+            emit_token(token_character_init(a, '-'));
             break;
         case '<':
             set_state(SCRIPT_DATA_ESCAPED_LESS_THAN_SIGN_STATE);
@@ -866,17 +912,20 @@ void script_data_escaped_state() {
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             character_token_emit(UNICODE_REPLACEMENT_CHAR);
+            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF: 
             LOG_ERROR(err_to_str(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             character_token_emit(c);
+            emit_token(token_character_init(a, c));
     }
 }
 
-void script_data_escaped_dash_state() {
+void script_data_escaped_dash_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '-': 
@@ -889,22 +938,26 @@ void script_data_escaped_dash_state() {
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             set_state(SCRIPT_DATA_ESCAPED_STATE);
             character_token_emit(UNICODE_REPLACEMENT_CHAR);
+            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF: 
             LOG_ERROR(err_to_str(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             set_state(SCRIPT_DATA_ESCAPED_STATE);
             character_token_emit(c);
+            emit_token(token_character_init(a, c));
     }
 }
 
-void script_data_escaped_dash_dash_state() {
+void script_data_escaped_dash_dash_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '-': 
             character_token_emit('-');
+            emit_token(token_character_init(a, '-'));
             break;
         case '<': 
             set_state(SCRIPT_DATA_ESCAPED_LESS_THAN_SIGN_STATE);
@@ -912,23 +965,27 @@ void script_data_escaped_dash_dash_state() {
         case '>': 
             set_state(SCRIPT_DATA_STATE);
             character_token_emit('>');
+            emit_token(token_character_init(a, '>'));
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             set_state(SCRIPT_DATA_ESCAPED_STATE);
             character_token_emit(UNICODE_REPLACEMENT_CHAR);
+            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF: 
             LOG_ERROR(err_to_str(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             set_state(SCRIPT_DATA_ESCAPED_STATE);
             character_token_emit(c);
+            emit_token(token_character_init(a, c));
     }
 }
 
-void script_data_escaped_less_than_sign_state() {
+void script_data_escaped_less_than_sign_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '/':
@@ -939,31 +996,35 @@ void script_data_escaped_less_than_sign_state() {
             if (is_ascii_alpha(c)) {
                 clear_temporary_buffer();
                 character_token_emit('<');
+                emit_token(token_character_init(a, '<'));
                 input_system_reconsume(c);
                 set_state(SCRIPT_DATA_DOUBLE_ESCAPE_START_STATE);
             } else {
                 character_token_emit('<');
+                emit_token(token_character_init(a, '<'));
                 input_system_reconsume(c);
                 set_state(SCRIPT_DATA_ESCAPED_STATE);
             }
     }
 }
 
-void script_data_escaped_end_tag_open_state() {
+void script_data_escaped_end_tag_open_state(arena * a) {
     int c = input_system_consume();
     if (is_ascii_alpha(c)) {
-        set_current_token(token_init(END_TAG));
+        set_current_token(token_end_tag_init(a));
         input_system_reconsume(c);
         set_state(SCRIPT_DATA_ESCAPED_END_TAG_NAME_STATE);
     } else {
         character_token_emit('<');
         character_token_emit('/');
+        emit_token(token_character_init(a, '<'));
+        emit_token(token_character_init(a, '/'));
         input_system_reconsume(c);
         set_state(SCRIPT_DATA_ESCAPED_STATE);
     }
 }
 
-void script_data_escaped_end_tag_name_state() {
+void script_data_escaped_end_tag_name_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -975,6 +1036,8 @@ void script_data_escaped_end_tag_name_state() {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
+                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init(a, '/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(c);
                 set_state(SCRIPT_DATA_ESCAPED_STATE);
@@ -986,6 +1049,8 @@ void script_data_escaped_end_tag_name_state() {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
+                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init(a, '/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(c);
                 set_state(SCRIPT_DATA_ESCAPED_STATE);
@@ -997,6 +1062,8 @@ void script_data_escaped_end_tag_name_state() {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
+                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init(a, '/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(c);
                 set_state(SCRIPT_DATA_ESCAPED_STATE);
@@ -1012,6 +1079,8 @@ void script_data_escaped_end_tag_name_state() {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
+                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init(a, '/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(c);
                 set_state(SCRIPT_DATA_ESCAPED_STATE);
@@ -1019,7 +1088,7 @@ void script_data_escaped_end_tag_name_state() {
     }
 }
 
-void script_data_double_escape_start_state() {
+void script_data_double_escape_start_state(arena * a) {
     int c = input_system_consume();
     switch(c) {
         case '\t':
@@ -1034,14 +1103,17 @@ void script_data_double_escape_start_state() {
                 set_state(SCRIPT_DATA_ESCAPED_STATE);
             }
             character_token_emit(c);
+            emit_token(token_character_init(a, c));
             break;
         default:
             if (is_ascii_upper_alpha(c)) {
                 append_to_temp_buffer(tolower(c));
                 character_token_emit(c);
+                emit_token(token_character_init(a, c));
             } else if (is_ascii_lower_alpha(c)) {
                 append_to_temp_buffer(c);
                 character_token_emit(c);
+                emit_token(token_character_init(a, c));
             } else {
                 input_system_reconsume(c);
                 set_state(SCRIPT_DATA_ESCAPED_STATE);
@@ -1049,92 +1121,109 @@ void script_data_double_escape_start_state() {
     }
 }
 
-void script_data_double_escaped_state() {
+void script_data_double_escaped_state(arena * a) {
     int c = input_system_consume();
     switch(c) {
         case '-':
             set_state(SCRIPT_DATA_DOUBLE_ESCAPED_DASH_STATE);
             character_token_emit('-');
+            emit_token(token_character_init(a, '-'));
             break;
         case '<':
             set_state(SCRIPT_DATA_DOUBLE_ESCAPED_LESS_THAN_SIGN_STATE);
             character_token_emit('<');
+            emit_token(token_character_init(a, '<'));
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             character_token_emit(UNICODE_REPLACEMENT_CHAR);
+            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             character_token_emit(c);
+            emit_token(token_character_init(a, c));
     }
 }
 
-void script_data_double_escaped_dash_state() {
+void script_data_double_escaped_dash_state(arena * a) {
     int c = input_system_consume();
     switch(c) {
         case '-':
             set_state(SCRIPT_DATA_DOUBLE_ESCAPED_DASH_DASH_STATE);
             character_token_emit('-');
+            emit_token(token_character_init(a, '-'));
             break;
         case '<':
             set_state(SCRIPT_DATA_DOUBLE_ESCAPED_LESS_THAN_SIGN_STATE);
             character_token_emit('<');
+            emit_token(token_character_init(a, '<'));
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             set_state(SCRIPT_DATA_DOUBLE_ESCAPED_STATE);
             character_token_emit(UNICODE_REPLACEMENT_CHAR);
+            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             set_state(SCRIPT_DATA_DOUBLE_ESCAPED_STATE);
             character_token_emit(c);
+            emit_token(token_character_init(a, c));
     }
 }
 
-void script_data_double_escaped_dash_dash_state() {
+void script_data_double_escaped_dash_dash_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '-':
             character_token_emit('-');
+            emit_token(token_character_init(a, '-'));
             break;
         case '<':
             set_state(SCRIPT_DATA_DOUBLE_ESCAPED_LESS_THAN_SIGN_STATE);
             character_token_emit('<');
+            emit_token(token_character_init(a, '<'));
             break;
         case '>':
             set_state(SCRIPT_DATA_STATE);
             character_token_emit('>');
+            emit_token(token_character_init(a, '>'));
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             set_state(SCRIPT_DATA_DOUBLE_ESCAPED_STATE);
             character_token_emit(UNICODE_REPLACEMENT_CHAR);
+            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             set_state(SCRIPT_DATA_DOUBLE_ESCAPED_STATE);
             character_token_emit(c);
+            emit_token(token_character_init(a, c));
     }
 }
 
-void script_data_double_escaped_less_than_sign_state() {
+void script_data_double_escaped_less_than_sign_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '/':
             clear_temporary_buffer();
             set_state(SCRIPT_DATA_DOUBLE_ESCAPE_END_STATE);
             character_token_emit('/');
+            emit_token(token_character_init(a, '/'));
             break;
         default:
             input_system_reconsume(c);
@@ -1142,7 +1231,7 @@ void script_data_double_escaped_less_than_sign_state() {
     }
 }
 
-void script_data_double_escape_end_state() {
+void script_data_double_escape_end_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -1157,14 +1246,17 @@ void script_data_double_escape_end_state() {
                 set_state(SCRIPT_DATA_DOUBLE_ESCAPED_STATE);
             }
             character_token_emit(c);
+            emit_token(token_character_init(a, c));
             break;
         default:
             if (is_ascii_upper_alpha(c)) {
                 append_to_temp_buffer(tolower(c));
                 character_token_emit(c);
+                emit_token(token_character_init(a, c));
             } else if (is_ascii_lower_alpha(c)) {
                 append_to_temp_buffer(c);
                 character_token_emit(c);
+                emit_token(token_character_init(a, c));
             } else {
                 input_system_reconsume(c);
                 set_state(SCRIPT_DATA_DOUBLE_ESCAPED_STATE);
@@ -1172,7 +1264,7 @@ void script_data_double_escape_end_state() {
     }
 }
 
-void before_attribute_name_state() {
+void before_attribute_name_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -1198,7 +1290,7 @@ void before_attribute_name_state() {
     }
 }
 
-void attribute_name_state() {
+void attribute_name_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -1235,7 +1327,7 @@ void attribute_name_state() {
     }
 }
 
-void after_attribute_name_state() {
+void after_attribute_name_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -1256,6 +1348,7 @@ void after_attribute_name_state() {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_TAG_PARSE_ERROR));
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             start_new_attribute_for_current_tag_token();
@@ -1264,7 +1357,7 @@ void after_attribute_name_state() {
     }
 }
 
-void before_attribute_value_state() {
+void before_attribute_value_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -1282,7 +1375,7 @@ void before_attribute_value_state() {
         case '>':
             LOG_ERROR(err_to_str(MISSING_ATTRIBUTE_VALUE_PARSE_ERROR));
             set_state(DATA_STATE);
-            emit_current_token();
+            emit_current_token(TOKEN_TAG);
             break;
         default:
             input_system_reconsume(c);
@@ -1290,7 +1383,7 @@ void before_attribute_value_state() {
     }
 }
 
-void attribute_value_double_quoted_state() {
+void attribute_value_double_quoted_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '"':
@@ -1307,13 +1400,14 @@ void attribute_value_double_quoted_state() {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_TAG_PARSE_ERROR));
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             append_to_current_tag_token_attribute_value(c);
     }
 }
 
-void attribute_value_single_quoted_state() {
+void attribute_value_single_quoted_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\'':
@@ -1330,13 +1424,14 @@ void attribute_value_single_quoted_state() {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_TAG_PARSE_ERROR));
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             append_to_current_tag_token_attribute_value(c);
     }
 }
 
-void attribute_value_unquoted_state() {
+void attribute_value_unquoted_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -1351,7 +1446,7 @@ void attribute_value_unquoted_state() {
             break;
         case '>':
             set_state(DATA_STATE);
-            emit_current_token();
+            emit_current_token(TOKEN_TAG);
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
@@ -1368,13 +1463,14 @@ void attribute_value_unquoted_state() {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_TAG_PARSE_ERROR));
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             append_to_current_tag_token_attribute_value(c);
     }
 }
 
-void after_attribute_value_quoted_state() {
+void after_attribute_value_quoted_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -1389,6 +1485,7 @@ void after_attribute_value_quoted_state() {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_TAG_PARSE_ERROR));
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             LOG_ERROR(err_to_str(MISSING_WHITESPACE_BETWEEN_ATTRIBUTES_PARSE_ERROR));
@@ -1397,17 +1494,18 @@ void after_attribute_value_quoted_state() {
     }
 }
 
-void self_closing_start_tag_state() {
+void self_closing_start_tag_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '>':
             set_self_closing_tag_for_current_token(true);
             set_state(DATA_STATE);
-            emit_current_token();
+            emit_current_token(TOKEN_TAG);
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_TAG_PARSE_ERROR));
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             LOG_ERROR(err_to_str(UNEXPECTED_SOLIDUS_IN_TAG_PARSE_ERROR));
@@ -1416,16 +1514,17 @@ void self_closing_start_tag_state() {
     }
 }
 
-void bogus_comment_state() {
+void bogus_comment_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '>':
             set_state(DATA_STATE);
-            emit_current_token(); //should be a comment token
+            emit_current_token(COMMENT); //should be a comment token
             break;
         case EOF:
-            emit_current_token();
+            emit_current_token(COMMENT);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
@@ -1436,16 +1535,16 @@ void bogus_comment_state() {
     }
 }
 
-void markup_declaration_open_state() {
+void markup_declaration_open_state(arena * a) {
     size_t buf_length = 0;
-    const char * buf = input_system_peekn(7, &buf_length);
+    const char * buf = input_system_peekn(7, &buf_length); //TODO: use arena
 
     if (buf[0] == '-' && buf[1] == '-') {
         input_system_consume();
         input_system_consume();
-        set_current_token(token_init(COMMENT));
+        set_current_token(token_comment_init(a));
         set_state(COMMENT_START_STATE);
-        free((void*)buf);
+        free((void*)buf); 
         return;
     } 
 
@@ -1459,7 +1558,7 @@ void markup_declaration_open_state() {
                 set_state(CDATA_SECTION_STATE);
             } else {
                 LOG_ERROR(err_to_str(CDATA_IN_HTML_CONTENT_PARSE_ERROR));
-                set_current_token(token_init(COMMENT));
+                set_current_token(token_comment_init(a));
                 append_to_current_tag_token_comment_data('[');
                 append_to_current_tag_token_comment_data('C');
                 append_to_current_tag_token_comment_data('D');
@@ -1469,7 +1568,7 @@ void markup_declaration_open_state() {
                 append_to_current_tag_token_comment_data('[');
                 set_state(BOGUS_COMMENT_STATE);
             }
-            free((void*)buf);
+            free((void*)buf); //TODO
             return;
         }
 
@@ -1482,18 +1581,18 @@ void markup_declaration_open_state() {
                 input_system_consume();
             }
             set_state(DOCTYPE_STATE);
-            free((void*)buf);
+            free((void*)buf); //TODO
             return;
         }
     }
 
     LOG_ERROR(err_to_str(INCORRECTLY_OPENED_COMMENT_PARSE_ERROR));
-    set_current_token(token_init(COMMENT));
+    set_current_token(token_comment_init(a));
     set_state(BOGUS_COMMENT_STATE);
-    free((void*) buf);
+    free((void*) buf); //TODO
 }
 
-void comment_start_state() {
+void comment_start_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '-':
@@ -1502,7 +1601,7 @@ void comment_start_state() {
         case '>':
             LOG_ERROR(err_to_str(ABRUPT_CLOSING_OF_EMPTY_COMMENT_PARSE_ERROR));
             set_state(DATA_STATE);
-            emit_current_token();
+            emit_current_token(COMMENT);
             break;
         default:
             input_system_reconsume(c);
@@ -1510,7 +1609,7 @@ void comment_start_state() {
     }
 }
 
-void comment_start_dash_state() {
+void comment_start_dash_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '-':
@@ -1519,12 +1618,13 @@ void comment_start_dash_state() {
         case '>':
             LOG_ERROR(err_to_str(ABRUPT_CLOSING_OF_EMPTY_COMMENT_PARSE_ERROR));
             set_state(DATA_STATE);
-            emit_current_token(); //TODO: should be a comment token
+            emit_current_token(COMMENT);
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_COMMENT_PARSE_ERROR));
-            emit_current_token(); //TODO: should be a comment token
+            emit_current_token(COMMENT);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             append_to_current_tag_token_comment_data('-');
@@ -1533,7 +1633,7 @@ void comment_start_dash_state() {
     }
 }
 
-void comment_state() {
+void comment_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '<':
@@ -1549,15 +1649,16 @@ void comment_state() {
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_COMMENT_PARSE_ERROR));
-            emit_current_token(); //TODO: should be a comment token
+            emit_current_token(COMMENT);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             append_to_current_tag_token_comment_data(c);
     }
 }
 
-void comment_less_than_sign_state() {
+void comment_less_than_sign_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '!':
@@ -1573,7 +1674,7 @@ void comment_less_than_sign_state() {
     }
 }
 
-void comment_less_than_sign_bang_state() {
+void comment_less_than_sign_bang_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '-':
@@ -1585,7 +1686,7 @@ void comment_less_than_sign_bang_state() {
     }
 }
 
-void comment_less_than_sign_bang_dash_state() {
+void comment_less_than_sign_bang_dash_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '-':
@@ -1597,7 +1698,7 @@ void comment_less_than_sign_bang_dash_state() {
     }
 }
 
-void comment_less_than_sign_bang_dash_dash_state() {
+void comment_less_than_sign_bang_dash_dash_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '>':
@@ -1612,7 +1713,7 @@ void comment_less_than_sign_bang_dash_dash_state() {
     }
 }
 
-void comment_end_dash_state() {
+void comment_end_dash_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '-':
@@ -1620,8 +1721,9 @@ void comment_end_dash_state() {
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_COMMENT_PARSE_ERROR));
-            emit_current_token(); //TODO: should be comment token
+            emit_current_token(COMMENT);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             append_to_current_tag_token_comment_data('-');
@@ -1630,12 +1732,12 @@ void comment_end_dash_state() {
     }
 }
 
-void comment_end_state() {
+void comment_end_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '>':
             set_state(DATA_STATE);
-            emit_current_token(); //TODO: comment token
+            emit_current_token(COMMENT);
             break;
         case '!':
             set_state(COMMENT_END_BANG_STATE);
@@ -1645,8 +1747,9 @@ void comment_end_state() {
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_COMMENT_PARSE_ERROR));
-            emit_current_token(); //TODO: comment token
+            emit_current_token(COMMENT);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             append_to_current_tag_token_comment_data('-');
@@ -1656,7 +1759,7 @@ void comment_end_state() {
     }
 }
 
-void comment_end_bang_state() {
+void comment_end_bang_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '-':
@@ -1668,12 +1771,13 @@ void comment_end_bang_state() {
         case '>':
             LOG_ERROR(err_to_str(INCORRECTLY_CLOSED_COMMENT_PARSE_ERROR));
             set_state(DATA_STATE);
-            emit_current_token(); //TODO: comment
+            emit_current_token(COMMENT);
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_COMMENT_PARSE_ERROR));
-            emit_current_token(); //TODO: comment
+            emit_current_token(COMMENT);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             append_to_current_tag_token_comment_data('-');
@@ -1684,7 +1788,7 @@ void comment_end_bang_state() {
     }
 }
 
-void doctype_state() {
+void doctype_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -1699,10 +1803,11 @@ void doctype_state() {
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_COMMENT_PARSE_ERROR));
-            set_current_token(token_init(DOCTYPE));
+            set_current_token(token_doctype_init(a));
             set_doctype_token_force_quirks_flag(true);
-            emit_current_token(); 
+            emit_current_token(TOKEN_TYPE_COUNT);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             LOG_ERROR(err_to_str(MISSING_WHITESPACE_BEFORE_DOCTYPE_NAME_PARSE_ERROR));
@@ -1711,7 +1816,7 @@ void doctype_state() {
     }
 }
 
-void before_doctype_name_state() {
+void before_doctype_name_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -1722,38 +1827,39 @@ void before_doctype_name_state() {
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
-            set_current_token(token_init(DOCTYPE));
+            set_current_token(token_doctype_init(a));
             append_to_current_tag_token_name(UNICODE_REPLACEMENT_CHAR);
             set_state(DOCTYPE_NAME_STATE);
             break;
         case '>':
             LOG_ERROR(err_to_str(MISSING_DOCTYPE_NAME_PARSE_ERROR));
-            set_current_token(token_init(DOCTYPE));
+            set_current_token(token_doctype_init(a));
             set_doctype_token_force_quirks_flag(true);
             set_state(DATA_STATE);
-            emit_current_token();
+            emit_current_token(TOKEN_TYPE_COUNT);
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_DOCTYPE_PARSE_ERROR));
-            set_current_token(token_init(DOCTYPE));
+            set_current_token(token_doctype_init(a));
             set_doctype_token_force_quirks_flag(true);
-            emit_current_token();
+            emit_current_token(TOKEN_TYPE_COUNT);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             if (is_ascii_upper_alpha(c)) {
-                set_current_token(token_init(DOCTYPE));
+                set_current_token(token_doctype_init(a));
                 append_to_current_tag_token_name(tolower(c));
                 set_state(DOCTYPE_NAME_STATE);
             } else {
-                set_current_token(token_init(DOCTYPE));
+                set_current_token(token_doctype_init(a));
                 append_to_current_tag_token_name(c);
                 set_state(DOCTYPE_NAME_STATE);
             }
     }
 }
 
-void doctype_name_state() {
+void doctype_name_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -1764,7 +1870,7 @@ void doctype_name_state() {
             break;
         case '>':
             set_state(DATA_STATE);
-            emit_current_token(); // TODO: should be doctype token
+            emit_current_token(DOCTYPE);
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
@@ -1773,8 +1879,9 @@ void doctype_name_state() {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
-            emit_current_token(); // TODO: doctype token
+            emit_current_token(DOCTYPE);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             if (is_ascii_upper_alpha(c)) {
@@ -1785,7 +1892,7 @@ void doctype_name_state() {
     }
 }
 
-void after_doctype_name_state() {
+void after_doctype_name_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -1796,19 +1903,20 @@ void after_doctype_name_state() {
             return;
         case '>':
             set_state(DATA_STATE);
-            emit_current_token(); // TODO: should be doctype token
+            emit_current_token(DOCTYPE);
             return;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
-            emit_current_token(); // TODO: doctype token
+            emit_current_token(DOCTYPE);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             return;
     }
 
     char buf[6] = {};
     buf[0] = tolower(c);
-    buf[1] = tolower(input_system_peek());
+    buf[1] = tolower(input_system_peek()); //TODO: I'm pretty sure this is wrong...
     buf[2] = tolower(input_system_peek());
     buf[3] = tolower(input_system_peek());
     buf[4] = tolower(input_system_peek());
@@ -1836,7 +1944,7 @@ void after_doctype_name_state() {
     set_state(BOGUS_DOCTYPE_STATE);
 }
 
-void after_doctype_public_keyword_state() {
+void after_doctype_public_keyword_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -1859,13 +1967,14 @@ void after_doctype_public_keyword_state() {
             LOG_ERROR(err_to_str(MISSING_DOCTYPE_PUBLIC_IDENTIFIER_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
             set_state(DATA_STATE);
-            emit_current_token(); //TODO: Should be doctype
+            emit_current_token(DOCTYPE);
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
-            emit_current_token(); // TODO: doctype token
+            emit_current_token(DOCTYPE);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             LOG_ERROR(err_to_str(MISSING_QUOTE_BEFORE_DOCTYPE_PUBLIC_IDENTIFIER_PARSE_ERROR));
@@ -1875,7 +1984,7 @@ void after_doctype_public_keyword_state() {
     }
 }
 
-void before_doctype_public_identifier_state() {
+void before_doctype_public_identifier_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -1896,13 +2005,14 @@ void before_doctype_public_identifier_state() {
             LOG_ERROR(err_to_str(MISSING_DOCTYPE_PUBLIC_IDENTIFIER_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
             set_state(DATA_STATE);
-            emit_current_token(); //TODO: Should be doctype
+            emit_current_token(DOCTYPE);
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
-            emit_current_token(); // TODO: doctype token
+            emit_current_token(DOCTYPE);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             LOG_ERROR(err_to_str(MISSING_QUOTE_BEFORE_DOCTYPE_PUBLIC_IDENTIFIER_PARSE_ERROR));
@@ -1912,7 +2022,7 @@ void before_doctype_public_identifier_state() {
     }
 }
 
-void doctype_public_identifier_double_quoted_state() {
+void doctype_public_identifier_double_quoted_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '"':
@@ -1922,12 +2032,12 @@ void doctype_public_identifier_double_quoted_state() {
             LOG_ERROR(err_to_str(ABRUPT_CLOSING_OF_EMPTY_COMMENT_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
             set_state(DATA_STATE);
-            emit_current_token(); //TODO: should be doctype
+            emit_current_token(DOCTYPE);
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
-            emit_current_token(); //TODO: should be doctype
+            emit_current_token(DOCTYPE);
             eof_token_emit();
             break;
         default:
@@ -1935,7 +2045,7 @@ void doctype_public_identifier_double_quoted_state() {
     }
 }
 
-void doctype_public_identifier_single_quoted_state() {
+void doctype_public_identifier_single_quoted_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '"':
@@ -1949,20 +2059,21 @@ void doctype_public_identifier_single_quoted_state() {
             LOG_ERROR(err_to_str(ABRUPT_DOCTYPE_PUBLIC_IDENTIFIER_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
             set_state(DATA_STATE);
-            emit_current_token(); //TODO: doctype
+            emit_current_token(DOCTYPE);
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
-            emit_current_token(); //TODO: should be doctype
+            emit_current_token(DOCTYPE);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             append_to_current_tag_token_identifier(c);
     }
 }
 
-void after_doctype_public_identifier_state() {
+void after_doctype_public_identifier_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -1973,7 +2084,7 @@ void after_doctype_public_identifier_state() {
             break;
         case '>':
             set_state(DATA_STATE);
-            emit_current_token(); //TODO: doctype
+            emit_current_token(DOCTYPE);
             break;
         case '"':
             LOG_ERROR(err_to_str(MISSING_WHITESPACE_BETWEEN_DOCTYPE_PUBLIC_AND_SYSTEM_IDENTIFIERS_PARSE_ERROR));
@@ -1988,8 +2099,9 @@ void after_doctype_public_identifier_state() {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
-            emit_current_token(); //TODO: should be doctype
+            emit_current_token(DOCTYPE);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             LOG_ERROR(err_to_str(MISSING_QUOTE_BEFORE_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR));
@@ -1999,7 +2111,7 @@ void after_doctype_public_identifier_state() {
     }
 }
 
-void between_doctype_public_and_system_identifiers_state() {
+void between_doctype_public_and_system_identifiers_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -2010,7 +2122,7 @@ void between_doctype_public_and_system_identifiers_state() {
             break;
         case '>':
             set_state(DATA_STATE);
-            emit_current_token(); //TODO: doctype
+            emit_current_token(DOCTYPE);
             break;
         case '"':
             set_current_token_identifier("", 0);
@@ -2023,8 +2135,9 @@ void between_doctype_public_and_system_identifiers_state() {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
-            emit_current_token(); //TODO: should be doctype
+            emit_current_token(DOCTYPE);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             LOG_ERROR(err_to_str(MISSING_QUOTE_BEFORE_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR));
@@ -2034,7 +2147,7 @@ void between_doctype_public_and_system_identifiers_state() {
     }
 }
 
-void after_doctype_system_keyword_state() {
+void after_doctype_system_keyword_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -2056,13 +2169,14 @@ void after_doctype_system_keyword_state() {
         case '>':
             LOG_ERROR(err_to_str(MISSING_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
-            emit_current_token(); //TODO: doctype
+            emit_current_token(DOCTYPE);
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
-            emit_current_token(); //TODO: should be doctype
+            emit_current_token(DOCTYPE);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             LOG_ERROR(err_to_str(MISSING_QUOTE_BEFORE_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR));
@@ -2072,7 +2186,7 @@ void after_doctype_system_keyword_state() {
     }
 }
 
-void before_doctype_system_identifier_state() {
+void before_doctype_system_identifier_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -2093,13 +2207,14 @@ void before_doctype_system_identifier_state() {
             LOG_ERROR(err_to_str(MISSING_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
             set_state(DATA_STATE);
-            emit_current_token(); //TODO: doctype
+            emit_current_token(DOCTYPE);
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
-            emit_current_token(); //TODO: doctype
+            emit_current_token(DOCTYPE);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             LOG_ERROR(err_to_str(MISSING_QUOTE_BEFORE_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR));
@@ -2110,7 +2225,7 @@ void before_doctype_system_identifier_state() {
     }
 }
 
-void doctype_system_identifier_double_quoted_state() {
+void doctype_system_identifier_double_quoted_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '"':
@@ -2124,20 +2239,21 @@ void doctype_system_identifier_double_quoted_state() {
             LOG_ERROR(err_to_str(ABRUPT_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
             set_state(DATA_STATE);
-            emit_current_token(); //TODO: doctype
+            emit_current_token(DOCTYPE);
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
-            emit_current_token(); //TODO: doctype
+            emit_current_token(DOCTYPE);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             append_to_current_tag_token_identifier(c);
     }
 }
 
-void doctype_system_identifier_single_quoted_state() {
+void doctype_system_identifier_single_quoted_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\'':
@@ -2151,20 +2267,21 @@ void doctype_system_identifier_single_quoted_state() {
             LOG_ERROR(err_to_str(ABRUPT_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
             set_state(DATA_STATE);
-            emit_current_token(); //TODO: doctype
+            emit_current_token(DOCTYPE);
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(true);
-            emit_current_token(); //TODO: doctype
+            emit_current_token(DOCTYPE);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             append_to_current_tag_token_identifier(c);
     }
 }
 
-void after_doctype_system_identifier_state() {
+void after_doctype_system_identifier_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '\t':
@@ -2175,7 +2292,7 @@ void after_doctype_system_identifier_state() {
             break;
         case '>':
             set_state(DATA_STATE);
-            emit_current_token(); //TODO: doctype
+            emit_current_token(DOCTYPE);
             break;
         default:
             LOG_ERROR(err_to_str(UNEXPECTED_CHARACTER_AFTER_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR));
@@ -2184,12 +2301,12 @@ void after_doctype_system_identifier_state() {
     }
 }
 
-void bogus_doctype_state() {
+void bogus_doctype_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case '>':
             set_state(DATA_STATE);
-            emit_token(DOCTYPE, 0);
+            emit_token(token_doctype_init(a));
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
@@ -2198,12 +2315,13 @@ void bogus_doctype_state() {
         case EOF:
             emit_token(DOCTYPE, 0);
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
             // otherwise intentionally ignore character
     }
 }
 
-void cdata_section_state() {
+void cdata_section_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case ']':
@@ -2212,13 +2330,15 @@ void cdata_section_state() {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_CDATA_PARSE_ERROR));
             eof_token_emit();
+            emit_token(token_eof_init(a));
             break;
         default:
             character_token_emit(c);
+            emit_token(token_character_init(a, c));
     }
 }
 
-void cdata_section_bracket_state() {
+void cdata_section_bracket_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case ']':
@@ -2226,16 +2346,18 @@ void cdata_section_bracket_state() {
             break;
         default:
             character_token_emit(']');
+            emit_token(token_character_init(a, ']'));
             input_system_reconsume(c);
             set_state(CDATA_SECTION_STATE);
     }
 }
 
-void cdata_section_end_state() {
+void cdata_section_end_state(arena * a) {
     int c = input_system_consume();
     switch (c) {
         case ']':
             character_token_emit(']');
+            emit_token(token_character_init(a, ']'));
             break;
         case '>':
             set_state(DATA_STATE);
@@ -2243,12 +2365,14 @@ void cdata_section_end_state() {
         default:
             character_token_emit(']');
             character_token_emit(']');
+            emit_token(token_character_init(a, ']'));
+            emit_token(token_character_init(a, ']'));
             input_system_reconsume(c);
             set_state(CDATA_SECTION_STATE);
     }
 }
 
-void character_reference_state() {
+void character_reference_state(arena * a) {
     clear_temporary_buffer();
     append_to_temp_buffer('&');
     int c = input_system_consume();
@@ -2270,7 +2394,7 @@ void character_reference_state() {
 }
 
 //TODO: double check the logic of this one 
-void named_character_reference_state() {
+void named_character_reference_state(arena * a) {
     while (is_named_character(input_system_peek())) {
         int c = input_system_consume();
         append_to_temp_buffer(c);
@@ -2297,13 +2421,14 @@ void named_character_reference_state() {
     set_state(AMBIGUOUS_AMPERSAND_STATE);
 }
 
-void ambiguous_ampersand_state() {
+void ambiguous_ampersand_state(arena * a) {
     int c = input_system_consume();
     if (is_ascii_alphanumeric(c)) {
         if (is_part_of_an_attribute()) {
             append_to_current_tag_token_attribute_value(c);
         } else {
             character_token_emit(c);
+            emit_token(token_character_init(a, c));
         }
     } else if (c == ';') {
         LOG_ERROR(err_to_str(UNKNOWN_NAMED_CHARACTER_REFERENCE_PARSE_ERROR));
@@ -2315,7 +2440,7 @@ void ambiguous_ampersand_state() {
     }
 }
 
-void numeric_character_reference_state() {
+void numeric_character_reference_state(arena * a) {
     set_character_reference_code(0);
     int c = input_system_consume();
     switch (c) {
@@ -2330,7 +2455,7 @@ void numeric_character_reference_state() {
     }
 }
 
-void hexadecimal_character_reference_start_state() {
+void hexadecimal_character_reference_start_state(arena * a) {
     int c = input_system_consume();
     if (is_ascii_hex_digit(c)) {
         input_system_reconsume(c);
@@ -2343,7 +2468,7 @@ void hexadecimal_character_reference_start_state() {
     }
 }
 
-void decimal_character_reference_start_state() {
+void decimal_character_reference_start_state(arena * a) {
     int c = input_system_consume();
     if (is_ascii_digit(c)) {
         input_system_reconsume(c);
@@ -2356,7 +2481,7 @@ void decimal_character_reference_start_state() {
     }
 }
 
-void hexadecimal_character_reference_state() {
+void hexadecimal_character_reference_state(arena * a) {
     int c = input_system_consume();
     if (is_ascii_digit(c)) {
         int curr_as_numeric = c - 0x0030;
@@ -2383,7 +2508,7 @@ void hexadecimal_character_reference_state() {
 }
 
 
-void decimal_character_reference_state() {
+void decimal_character_reference_state(arena * a) {
     int c = input_system_consume();
     if (is_ascii_digit(c)) {
         int curr_as_numeric = c - 0x0030;
@@ -2399,7 +2524,7 @@ void decimal_character_reference_state() {
     }
 }
 
-void numeric_character_reference_end_state() {
+void numeric_character_reference_end_state(arena * a) {
     int char_ref = get_character_reference_code();
     if (char_ref == 0x00) {
         LOG_ERROR(err_to_str(NULL_CHARACTER_REFERENCE_PARSE_ERROR));
