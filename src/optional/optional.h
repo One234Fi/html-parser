@@ -11,6 +11,6 @@ struct opt {
 };
 
 #define opt_get(opt, t) ((t *) (opt).data)
-#define opt_init(opt, t, a) (opt)->data=alloc(a, sizeof(t), _Alignof(t), 1)
+#define opt_init(opt, t, a) (opt).data=alloc(a, sizeof(t), _Alignof(t), 1)
 
 #endif
