@@ -3,14 +3,15 @@
 #include "node_types.h"
 #include <ctype.h>
 #include <stdbool.h>
-#include <stdlib.h>
 #include <string.h>
 #include "common.h"
+#include "token/token.h"
 
 
 
-void tree_construction_phase(struct TOKEN_STRUCT input);
-void tree_construction_dispatcher(struct TOKEN_STRUCT input);
+void tree_construction_phase(token input);
+void tree_construction_dispatcher(token input);
+void process();
 
 
 bool has_attribute(node n, char* attr_type);
@@ -56,7 +57,7 @@ void tree_construction_phase(token input) {
     tree_construction_dispatcher(input);
 }
 
-void tree_construction_dispatcher(struct TOKEN_STRUCT input) {
+void tree_construction_dispatcher(token input) {
     node n = get_adjusted_current_node();
     if ((node_stack_is_empty(state.open_elements_stack))
         || (in_html_namespace(n)) 
@@ -76,6 +77,7 @@ void tree_construction_dispatcher(struct TOKEN_STRUCT input) {
         || (input.type == END_OF_FILE)) {
 
         //insertion mode processing
+        process();
     } else {
         //foreign content processing
     }
@@ -132,3 +134,69 @@ bool is_html_integration_point(node n) {
         || n.type == SVG_DESC_ELEMENT
         || n.type == SVG_TITLE_ELEMENT;
 }
+
+typedef enum insertion_mode {
+    INITIAL,
+    BEFORE_HTML,
+    BEFORE_HEAD,
+    IN_HEAD,
+    IN_HEAD_NOSCRIPT,
+    AFTER_HEAD,
+    IN_BODY,
+    TEXT,
+    IN_TABLE,
+    IN_TABLE_TEXT, 
+    IN_CAPTION, 
+    IN_COLUMN_GROUP,
+    IN_TABLE_BODY,
+    IN_ROW,
+    IN_CELL,
+    IN_SELECT,
+    IN_SELECT_IN_TABLE,
+    IN_TEMPLATE,
+    AFTER_BODY,
+    IN_FRAMESET,
+    AFTER_FRAMESET,
+    AFTER_AFTER_BODY,
+    AFTER_AFTER_FRAMESET
+} insertion_mode;
+
+void process() {
+    switch (parser.insertion_mode) {
+        case INITIAL: 
+
+            break;
+        case BEFORE_HTML: break;
+        case BEFORE_HEAD: break;
+        case IN_HEAD: break;
+        case IN_HEAD_NOSCRIPT: break;
+        case AFTER_HEAD: break;
+        case IN_BODY: break;
+        case TEXT: break;
+        case IN_TABLE: break;
+        case IN_TABLE_TEXT: break; 
+        case IN_CAPTION: break; 
+        case IN_COLUMN_GROUP: break;
+        case IN_TABLE_BODY: break;
+        case IN_ROW: break;
+        case IN_CELL: break;
+        case IN_SELECT: break;
+        case IN_SELECT_IN_TABLE: break;
+        case IN_TEMPLATE: break;
+        case AFTER_BODY: break;
+        case IN_FRAMESET: break;
+        case AFTER_FRAMESET: break;
+        case AFTER_AFTER_BODY: break;
+        case AFTER_AFTER_FRAMESET: break;
+        default:
+            LOG_ERROR("Invalid insertion mode type!");
+    }
+}
+
+
+node last_node_in_stack(node_stack * stack);
+void reset_insertion_mode(parser parser) {
+    bool last = false;
+    node * n = last_node_in_stack(parser.node_stack);
+    
+

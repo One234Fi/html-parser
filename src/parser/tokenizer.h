@@ -6,7 +6,7 @@
  * 08/24/2024
  */
 
-#include "arena.h"
+#include "arena/arena.h"
 
 void execute(arena * a);
 

@@ -3,6 +3,7 @@
  */
 
 #include "tokenizer.h"
+#include "arena/arena.h"
 #include "common.h"
 #include "error.h"
 #include "input.h"
@@ -13,17 +14,19 @@
 #include <string.h>
 
 
-struct parser {
-    token* current_token;
+typedef struct parser {
+    token * current_token;
     enum TOKENIZER_STATE_TYPE state;
     enum TOKENIZER_STATE_TYPE return_state;
     enum INSERTION_MODE_TYPE insertion_mode;
     bool parser_pause_flag;
-};
+    opt_str last_start_tag_name;
+    arena * arena;
+} parser;
 
-static parser parser_t = {
-    .state = DATA_STATE,
-};
+parser * parser_init(arena * a) {
+    return NULL;
+}
 
 #define UNICODE_REPLACEMENT_CHAR 0xEF
 
@@ -293,6 +296,9 @@ void decimal_character_reference_state(arena * a);
 void numeric_character_reference_end_state(arena * a);
 
 void execute(arena * a) {
+    if (parser_t.parser_pause_flag) {
+        return;
+    }
     LOG_CURRENT_STATE();
     switch (get_state()) {
         case DATA_STATE: data_state(a); break;
@@ -2313,8 +2319,8 @@ void bogus_doctype_state(arena * a) {
             // intentionally ignore character
             break;
         case EOF:
-            emit_token(DOCTYPE, 0);
-            eof_token_emit();
+            eof_token_emit(); //logging
+            emit_current_token(DOCTYPE);
             emit_token(token_eof_init(a));
             break;
             // otherwise intentionally ignore character

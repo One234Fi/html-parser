@@ -1,7 +1,7 @@
 #ifndef TOKEN_MODULE_H
 #define TOKEN_MODULE_H
 
-#include "arena.h"
+#include "arena/arena.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
