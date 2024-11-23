@@ -30,6 +30,7 @@ input_system input_system_init(const char* filename, arena a) {
         int c = getc(f);
         *push(s.buffer, &a) = c;
     } while(c != EOF);
+    fclose(f);
 
     s.front = s.buffer->data;
     s.len = s.buffer->len;

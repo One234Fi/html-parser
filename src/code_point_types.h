@@ -1,6 +1,5 @@
 #ifndef CODE_POINT_TYPES_MODULE
 #define CODE_POINT_TYPES_MODULE
-//TODO: test this rigorously. recursive macros
 
 /**
  * Code point utils and definitions

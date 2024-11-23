@@ -11,7 +11,7 @@ void grow(void * slice, ptrdiff_t size, ptrdiff_t align, arena * a) {
     memcpy(&temp, slice, sizeof(temp));
     assert(temp.len >= 0);
     assert(temp.cap >= 0);
-    assert(temp.len <= temp.cap);
+    //assert(temp.len <= temp.cap);
 
     if (!temp.data) {
         temp.cap = 1;

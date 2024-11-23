@@ -9,8 +9,8 @@
 
 
 
-void tree_construction_phase(token input);
-void tree_construction_dispatcher(token input);
+void tree_construction_phase(token * input);
+void tree_construction_dispatcher(token * input);
 void process();
 
 
@@ -53,34 +53,34 @@ void tree_construction_init() {
     };
 }
 
-void tree_construction_phase(token input) {
+void tree_construction_phase(token * input) {
     tree_construction_dispatcher(input);
 }
 
-void tree_construction_dispatcher(token input) {
-    node n = get_adjusted_current_node();
-    if ((node_stack_is_empty(state.open_elements_stack))
-        || (in_html_namespace(n)) 
-        || (is_mathml_text_integration_point(n)
-            && input.type == START_TAG
-            && (strncmp(input.val.start_tag.tag_name, "mglyph", strlen("mglyph")) != 0)
-            && (strncmp(input.val.start_tag.tag_name, "malignmark", strlen("malignmark")) != 0)) 
-        || (is_mathml_text_integration_point(n)
-            && input.type == CHARACTER) 
-        || (is_mathml_annotation_xml_element(n)
-            && input.type == START_TAG
-            && (strncmp(input.val.start_tag.tag_name, "svg", strlen("svg")) == 0)) 
-        || (is_html_integration_point(n)
-            && input.type == START_TAG) 
-        || (is_html_integration_point(n)
-            && input.type == CHARACTER)
-        || (input.type == END_OF_FILE)) {
+void tree_construction_dispatcher(token * input) {
+    //node n = get_adjusted_current_node();
+    //if ((node_stack_is_empty(state.open_elements_stack))
+    //    || (in_html_namespace(n)) 
+    //    || (is_mathml_text_integration_point(n)
+    //        && input.type == START_TAG
+    //        && (strncmp(container_of(input, token_start_tag, token), "mglyph", strlen("mglyph")) != 0)
+    //        && (strncmp(input.val.start_tag.tag_name, "malignmark", strlen("malignmark")) != 0)) 
+    //    || (is_mathml_text_integration_point(n)
+    //        && input.type == CHARACTER) 
+    //    || (is_mathml_annotation_xml_element(n)
+    //        && input.type == START_TAG
+    //        && (strncmp(input.val.start_tag.tag_name, "svg", strlen("svg")) == 0)) 
+    //    || (is_html_integration_point(n)
+    //        && input.type == START_TAG) 
+    //    || (is_html_integration_point(n)
+    //        && input.type == CHARACTER)
+    //    || (input.type == END_OF_FILE)) {
 
-        //insertion mode processing
-        process();
-    } else {
-        //foreign content processing
-    }
+    //    //insertion mode processing
+    //    process();
+    //} else {
+    //    //foreign content processing
+    //}
 }
 
 node get_current_node() {
@@ -118,13 +118,13 @@ bool is_html_integration_point(node n) {
             && has_attribute(n, ATTRIBUTE_ENCODING)
             && (compare_str_ignore_case(
                     n.name.data, 
-                    n.name.length, 
+                    n.name.len, 
                     "text/html", 
                     strlen("text/html"))
                 || 
                 compare_str_ignore_case(
                     n.name.data, 
-                    n.name.length, 
+                    n.name.len, 
                     "application/xhtml+xml", 
                     strlen("application/xhtml+xml")))) {
         return true;
@@ -162,41 +162,33 @@ typedef enum insertion_mode {
 } insertion_mode;
 
 void process() {
-    switch (parser.insertion_mode) {
-        case INITIAL: 
+    //switch (parser.insertion_mode) {
+    //    case INITIAL: 
 
-            break;
-        case BEFORE_HTML: break;
-        case BEFORE_HEAD: break;
-        case IN_HEAD: break;
-        case IN_HEAD_NOSCRIPT: break;
-        case AFTER_HEAD: break;
-        case IN_BODY: break;
-        case TEXT: break;
-        case IN_TABLE: break;
-        case IN_TABLE_TEXT: break; 
-        case IN_CAPTION: break; 
-        case IN_COLUMN_GROUP: break;
-        case IN_TABLE_BODY: break;
-        case IN_ROW: break;
-        case IN_CELL: break;
-        case IN_SELECT: break;
-        case IN_SELECT_IN_TABLE: break;
-        case IN_TEMPLATE: break;
-        case AFTER_BODY: break;
-        case IN_FRAMESET: break;
-        case AFTER_FRAMESET: break;
-        case AFTER_AFTER_BODY: break;
-        case AFTER_AFTER_FRAMESET: break;
-        default:
-            LOG_ERROR("Invalid insertion mode type!");
-    }
+    //        break;
+    //    case BEFORE_HTML: break;
+    //    case BEFORE_HEAD: break;
+    //    case IN_HEAD: break;
+    //    case IN_HEAD_NOSCRIPT: break;
+    //    case AFTER_HEAD: break;
+    //    case IN_BODY: break;
+    //    case TEXT: break;
+    //    case IN_TABLE: break;
+    //    case IN_TABLE_TEXT: break; 
+    //    case IN_CAPTION: break; 
+    //    case IN_COLUMN_GROUP: break;
+    //    case IN_TABLE_BODY: break;
+    //    case IN_ROW: break;
+    //    case IN_CELL: break;
+    //    case IN_SELECT: break;
+    //    case IN_SELECT_IN_TABLE: break;
+    //    case IN_TEMPLATE: break;
+    //    case AFTER_BODY: break;
+    //    case IN_FRAMESET: break;
+    //    case AFTER_FRAMESET: break;
+    //    case AFTER_AFTER_BODY: break;
+    //    case AFTER_AFTER_FRAMESET: break;
+    //    default:
+    //        LOG_ERROR("Invalid insertion mode type!");
+    //}
 }
-
-
-node last_node_in_stack(node_stack * stack);
-void reset_insertion_mode(parser parser) {
-    bool last = false;
-    node * n = last_node_in_stack(parser.node_stack);
-    
-

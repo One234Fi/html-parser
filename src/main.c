@@ -5,7 +5,7 @@
 
 
 #include "input.h"
-#include "tokenizer.h"
+#include "parser/tokenizer.h"
 #include <stdint.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -13,6 +13,7 @@
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <unistd.h>
+#include "arena/arena.h"
 
 typedef struct filebuffer {
     size_t length;
@@ -52,7 +53,8 @@ int main(int argc, char* argv[]) {
     fprintf(stdout, "%d\n", argc);
 
     if (argc > 1) {
-        input_system_init(argv[1]);
+        arena global = arena_init(1024);
+        input_system_init(argv[1], global);
         while (!input_system_empty()) {
             execute();
         }

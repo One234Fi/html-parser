@@ -10,7 +10,7 @@
 
 typedef struct node {
     int type;
-    string_buffer name;
+    string name;
 } node;
 
 typedef struct node_stack {

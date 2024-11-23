@@ -8,9 +8,10 @@
 
 #include "arena/arena.h"
 
-void execute(arena * a);
 
 typedef struct parser parser;
+
+void execute(parser * p, arena * a);
 
 
 enum TOKENIZER_STATE_TYPE {
