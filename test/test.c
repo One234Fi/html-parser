@@ -1,5 +1,9 @@
 #include "test.h"
+#include "arena/arena.h"
+#include <stddef.h>
+#include <stdint.h>
 #include <stdio.h>
+#include "vector/vector.h"
 
 void color_banner();
 void run_input_tests();
@@ -38,6 +42,7 @@ void results() {
     fprintf(stdout, "============\n");
     fprintf(stdout, "Total: %zu\nPassed: %zu\nFailed: %zu\n", succeeded + failed, succeeded, failed);
 }
+ 
 
 int main() {
     run_all_tests();

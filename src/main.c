@@ -54,9 +54,9 @@ int main(int argc, char* argv[]) {
 
     if (argc > 1) {
         arena global = arena_init(1024);
-        input_system_init(argv[1], global);
-        while (!input_system_empty()) {
-            execute();
+        input_system s = input_system_init(argv[1], &global);
+        while (!input_system_empty(&s)) {
+            //execute();
         }
     }
 

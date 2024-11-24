@@ -16,25 +16,27 @@ bool input_system_empty(input_system * s) {
     return s->len == 0;
 }
 
-input_system input_system_init(const char* filename, arena a) {
+input_system input_system_init(const char* filename, arena * a) {
     input_system s = {};
 
     FILE* f;
     f = fopen(filename, "rb");
-    ASSERT(!f, "FAILED TO OPEN FILE", s);
+    assert(f);
 
     //TODO: read entire file for now. Change later if it becomes a problem
     //TODO: this is probably a stupid way to do this
     int c = 0;
+    string temp = {0};
     do {
-        int c = getc(f);
-        *push(s.buffer, &a) = c;
+        c = getc(f);
+        *push(&temp, a) = c;
     } while(c != EOF);
     fclose(f);
 
-    s.front = s.buffer->data;
-    s.len = s.buffer->len;
-    normalize_newlines(s.buffer);
+    s.buffer = temp;
+    s.front = s.buffer.data;
+    s.len = s.buffer.len;
+    normalize_newlines(&s.buffer);
     return s;
 }
 
@@ -47,16 +49,16 @@ int input_system_consume(input_system * s) {
 }
 
 void input_system_reconsume(input_system * s) {
-    assert(s->front > s->buffer->data);
+    assert(s->front > s->buffer.data);
     s->front--;
     s->len++;
 }
 
-string input_system_peekn(input_system * s, int n, arena a) {
+string input_system_peekn(input_system * s, int n, arena * a) {
     string st = {};
     int l = n < s->len ? n : s->len;
     for (int i = 0; i < l; i++) {
-        *push(&st, &a) = s->front[i];
+        *push(&st, a) = s->front[i];
     }
     return st;
 }

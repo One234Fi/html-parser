@@ -1543,7 +1543,7 @@ void bogus_comment_state(parser * p, arena * a) {
 }
 
 void markup_declaration_open_state(parser * p, arena * a) {
-    string buf = input_system_peekn(&p->input, 7, *a); //TODO: use arena
+    string buf = input_system_peekn(&p->input, 7, a); //TODO: use arena
 
     if (buf.data[0] == '-' && buf.data[1] == '-') {
         input_system_consume(&p->input);
@@ -1916,7 +1916,7 @@ void after_doctype_name_state(parser * p, arena * a) {
             return;
     }
 
-    string temp = input_system_peekn(&p->input, 5, *a);
+    string temp = input_system_peekn(&p->input, 5, a);
     char buf[6] = {};
     buf[0] = tolower(c);
     buf[1] = tolower(temp.data[0]);

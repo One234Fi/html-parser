@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <stdlib.h>
@@ -15,6 +16,7 @@ arena_init(ptrdiff_t cap) {
 
 void * 
 alloc(arena * a, ptrdiff_t size, ptrdiff_t align, ptrdiff_t count) {
+    assert(size != 0);
     ptrdiff_t padding = -(uintptr_t)a->beg & (align - 1);
     ptrdiff_t available = a->end - a->beg - padding;
     if (available < 0 || count > available / size) {
