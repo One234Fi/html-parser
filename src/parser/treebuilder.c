@@ -3,9 +3,9 @@
 #include "node_types.h"
 #include <ctype.h>
 #include <stdbool.h>
-#include <string.h>
 #include "common.h"
 #include "token/token.h"
+#include <string.h>
 
 
 

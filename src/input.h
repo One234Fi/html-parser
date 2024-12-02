@@ -5,14 +5,10 @@
  */
 
 #include "arena/arena.h"
+#include "str/str.h"
 #include <stddef.h>
 #include <stdbool.h>
 
-typedef struct string {
-    char * data;
-    ptrdiff_t len;
-    ptrdiff_t cap;
-} string;
 
 typedef struct input_system {
     string buffer;

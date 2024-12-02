@@ -47,8 +47,5 @@ void results() {
 int main() {
     run_all_tests();
     results();
-
-    print_utf8_file();
-    print_ascii_file();
 }
 
