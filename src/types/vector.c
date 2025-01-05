@@ -1,13 +1,15 @@
+#include "types/arena.h"
+#include "types/types.h"
+#include <assert.h>
 #include <stdio.h>
 #include <string.h>
-#include "vector.h"
 
 
-void grow(void * slice, ptrdiff_t size, ptrdiff_t align, arena * a) {
+void grow(void * slice, size stride, size align, arena * a) {
     struct {
         void * data;
-        ptrdiff_t len;
-        ptrdiff_t cap;
+        size len;
+        size cap;
     } temp;
     memcpy(&temp, slice, sizeof(temp));
     fprintf(stderr, "GROW START: %td, %td\n", temp.len, temp.cap);
@@ -17,14 +19,14 @@ void grow(void * slice, ptrdiff_t size, ptrdiff_t align, arena * a) {
 
     if (!temp.data) {
         temp.cap = 1;
-        temp.data = alloc(a, size * 2, align, temp.cap);
+        temp.data = alloc(a, stride * 2, align, temp.cap);
     }
-    else if (a->beg == temp.data + size * temp.cap) {
-        alloc(a, size, 1, temp.cap); 
+    else if (a->beg == temp.data + stride * temp.cap) {
+        alloc(a, stride, 1, temp.cap); 
     }
     else {
-        void * data = alloc(a, size * 2, align, temp.cap);
-        memcpy(data, temp.data, size * temp.len);
+        void * data = alloc(a, stride * 2, align, temp.cap);
+        memcpy(data, temp.data, stride * temp.len);
         temp.data = data;
     }
 

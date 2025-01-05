@@ -3,6 +3,7 @@
 #ifndef ARENA_MODULE_H
 #define ARENA_MODULE_H
 
+#include "types/types.h"
 #include <stddef.h>
 
 #define new(...)                    newx(__VA_ARGS__,new4,new3,new2)(__VA_ARGS__)
@@ -17,6 +18,6 @@ struct arena {
 typedef struct arena arena;
 
 arena arena_init(ptrdiff_t cap);
-void * alloc(arena * a, ptrdiff_t size, ptrdiff_t align, ptrdiff_t count);
+void * alloc(arena * a, size stride, size align, size count);
 
 #endif
