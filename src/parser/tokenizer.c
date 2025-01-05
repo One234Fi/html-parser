@@ -3,27 +3,17 @@
  */
 
 #include "tokenizer.h"
-#include "arena/arena.h"
+#include "types/arena.h"
 #include "common.h"
 #include "error.h"
 #include "input.h"
 #include "code_point_types.h"
-#include "token/token.h"
+#include "parser/token.h"
 #include <ctype.h>
 #include <stdio.h>
 #include <string.h>
 
 
-typedef struct parser {
-    token * current_token;
-    enum TOKENIZER_STATE_TYPE state;
-    enum TOKENIZER_STATE_TYPE return_state;
-    enum INSERTION_MODE_TYPE insertion_mode;
-    bool parser_pause_flag;
-    opt_str last_start_tag_name;
-    arena * arena;
-    input_system input;
-} parser;
 
 parser * parser_init(arena * a) {
     return NULL;
@@ -89,23 +79,23 @@ enum TOKENIZER_STATE_TYPE get_state(parser * p) {
     return p->state;
 }
 
-void set_current_token(parser * p, token * tkn) {
+void set_current_token(parser * p, token tkn) {
     p->current_token = tkn;
 }
 
-token * get_current_token(parser * p) {
+token get_current_token(parser * p) {
     return p->current_token;
 }
 
 void emit_current_token(parser * p, token_type expected) {
-    token * t = get_current_token(p);
-    if (expected < TOKEN_TYPE_COUNT && expected != t->type) {
+    token t = get_current_token(p);
+    if (expected < TOKEN_TYPE_COUNT && expected != t.type) {
         LOG_WARN("Emitting unexpected token type!");
-    } else if (expected == TOKEN_TAG && !(t->type == START_TAG || t->type == END_TAG)) {
+    } else if (expected == TOKEN_TAG && !(t.type == START_TAG || t.type == END_TAG)) {
         LOG_WARN("Emitting unexpected token type!");
     }
 
-    emit_token(get_current_token(p));
+    //emit_token(get_current_token(p));
 }
 
 void character_token_emit(const int c) {
@@ -399,15 +389,15 @@ void data_state(parser * p, arena * a) {
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             character_token_emit(c); //logging
-            emit_token(token_character_init(a, c));
+            emit_token(token_character_init(c));
             break;
         case EOF:
             eof_token_emit(); //logging
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             character_token_emit(c); //logging
-            emit_token(token_character_init(a, c));
+            emit_token(token_character_init(c));
     }
 }
 
@@ -424,15 +414,15 @@ void rcdata_state(parser * p, arena * a) {
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             character_token_emit(UNICODE_REPLACEMENT_CHAR); 
-            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
+            emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             character_token_emit(c);
-            emit_token(token_character_init(a, c));
+            emit_token(token_character_init(c));
     }
 }
 
@@ -445,15 +435,15 @@ void rawtext_state(parser * p, arena * a) {
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             character_token_emit(UNICODE_REPLACEMENT_CHAR); 
-            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
+            emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             character_token_emit(c);
-            emit_token(token_character_init(a, c));
+            emit_token(token_character_init(c));
     }
 }
 
@@ -466,15 +456,15 @@ void script_data_state(parser * p, arena * a) {
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             character_token_emit(UNICODE_REPLACEMENT_CHAR); 
-            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
+            emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             character_token_emit(c);
-            emit_token(token_character_init(a, c));
+            emit_token(token_character_init(c));
     }
 }
 
@@ -484,15 +474,15 @@ void plaintext_state(parser * p, arena * a) {
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             character_token_emit(UNICODE_REPLACEMENT_CHAR); 
-            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
+            emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             character_token_emit(c);
-            emit_token(token_character_init(a, c));
+            emit_token(token_character_init(c));
     }
 }
 
@@ -507,27 +497,27 @@ void tag_open_state(parser * p, arena * a) {
             break;
         case '?':
             LOG_ERROR(err_to_str(UNEXPECTED_QUESTION_MARK_INSTEAD_OF_TAG_NAME_PARSE_ERROR));
-            set_current_token(p, token_comment_init(a));
+            set_current_token(p, token_comment_init());
             input_system_reconsume(&p->input);
             set_state(p, BOGUS_COMMENT_STATE);
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_BEFORE_TAG_NAME_PARSE_ERROR));
             character_token_emit('<');
-            emit_token(token_character_init(a, '<'));
+            emit_token(token_character_init('<'));
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             if (is_ascii_alpha(c)) {
-                set_current_token(p, token_start_tag_init(a));
+                set_current_token(p, token_start_tag_init());
                 input_system_reconsume(&p->input);
                 set_state(p, TAG_NAME_STATE);
                 return;
             } else {
                 LOG_ERROR(err_to_str(INVALID_FIRST_CHARACTER_OF_TAG_NAME_PARSE_ERROR));
                 character_token_emit('<');
-                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init('<'));
                 input_system_reconsume(&p->input);
                 set_state(p, DATA_STATE);
             }
@@ -545,17 +535,17 @@ void end_tag_open_state(parser * p, arena * a) {
             LOG_ERROR(err_to_str(EOF_BEFORE_TAG_NAME_PARSE_ERROR));
             character_token_emit('/');
             eof_token_emit();
-            emit_token(token_character_init(a, '/'));
-            emit_token(token_eof_init(a));
+            emit_token(token_character_init('/'));
+            emit_token(token_eof_init());
             break;
         default:
             if (is_ascii_alpha(c)) {
-                set_current_token(p, token_end_tag_init(a));
+                set_current_token(p, token_end_tag_init());
                 input_system_reconsume(&p->input);
                 set_state(p, TAG_NAME_STATE);
             } else {
                 LOG_ERROR(err_to_str(INVALID_FIRST_CHARACTER_OF_TAG_NAME_PARSE_ERROR));
-                set_current_token(p, token_comment_init(a));
+                set_current_token(p, token_comment_init());
                 input_system_reconsume(&p->input);
                 set_state(p, BOGUS_COMMENT_STATE);
             }
@@ -585,7 +575,7 @@ void tag_name_state(parser * p, arena * a) {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_TAG_PARSE_ERROR));
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             if (is_ascii_upper_alpha(c)) {
@@ -603,7 +593,7 @@ void rcdata_less_than_sign_state(parser * p, arena * a) {
         set_state(p, RCDATA_END_TAG_OPEN_STATE);
     } else {
         character_token_emit('<');
-        emit_token(token_character_init(a, '<'));
+        emit_token(token_character_init('<'));
         input_system_reconsume(&p->input);
         set_state(p, RCDATA_STATE);
     }
@@ -612,14 +602,14 @@ void rcdata_less_than_sign_state(parser * p, arena * a) {
 void rcdata_end_tag_open_state(parser * p, arena * a) {
     int c = input_system_consume(&p->input);
     if (is_ascii_alpha(c)) {
-        set_current_token(p, token_eof_init(a));
+        set_current_token(p, token_eof_init());
         input_system_reconsume(&p->input);
         set_state(p, RCDATA_END_TAG_NAME_STATE);
     } else {
         character_token_emit('<');
         character_token_emit('/');
-        emit_token(token_character_init(a, '<'));
-        emit_token(token_character_init(a, '/'));
+        emit_token(token_character_init('<'));
+        emit_token(token_character_init('/'));
         input_system_reconsume(&p->input);
         set_state(p, RCDATA_STATE);
     }
@@ -637,8 +627,8 @@ void rcdata_end_tag_name_state(parser * p, arena * a) {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
-                emit_token(token_character_init(a, '<'));
-                emit_token(token_character_init(a, '/'));
+                emit_token(token_character_init('<'));
+                emit_token(token_character_init('/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(&p->input);
                 set_state(p, RCDATA_STATE);
@@ -650,8 +640,8 @@ void rcdata_end_tag_name_state(parser * p, arena * a) {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
-                emit_token(token_character_init(a, '<'));
-                emit_token(token_character_init(a, '/'));
+                emit_token(token_character_init('<'));
+                emit_token(token_character_init('/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(&p->input);
                 set_state(p, RCDATA_STATE);
@@ -663,8 +653,8 @@ void rcdata_end_tag_name_state(parser * p, arena * a) {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
-                emit_token(token_character_init(a, '<'));
-                emit_token(token_character_init(a, '/'));
+                emit_token(token_character_init('<'));
+                emit_token(token_character_init('/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(&p->input);
                 set_state(p, RCDATA_STATE);
@@ -680,8 +670,8 @@ void rcdata_end_tag_name_state(parser * p, arena * a) {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
-                emit_token(token_character_init(a, '<'));
-                emit_token(token_character_init(a, '/'));
+                emit_token(token_character_init('<'));
+                emit_token(token_character_init('/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(&p->input);
                 set_state(p, RCDATA_STATE);
@@ -696,7 +686,7 @@ void rawtext_less_than_sign_state(parser * p, arena * a) {
         set_state(p, RAWTEXT_END_TAG_OPEN_STATE);
     } else {
         character_token_emit('<');
-        emit_token(token_character_init(a, '<'));
+        emit_token(token_character_init('<'));
         input_system_reconsume(&p->input);
         set_state(p, RAWTEXT_STATE);
     }
@@ -705,12 +695,12 @@ void rawtext_less_than_sign_state(parser * p, arena * a) {
 void rawtext_end_tag_open_state(parser * p, arena * a) {
     int c = input_system_consume(&p->input);
     if (is_ascii_alpha(c)) {
-        set_current_token(p, token_eof_init(a));
+        set_current_token(p, token_eof_init());
         input_system_reconsume(&p->input);
         set_state(p, SCRIPT_DATA_END_TAG_NAME_STATE);
     } else {
         character_token_emit('/');
-        emit_token(token_character_init(a, '/'));
+        emit_token(token_character_init('/'));
         input_system_reconsume(&p->input);
         set_state(p, SCRIPT_DATA_STATE);
     }
@@ -728,8 +718,8 @@ void rawtext_end_tag_name_state(parser * p, arena * a) {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
-                emit_token(token_character_init(a, '<'));
-                emit_token(token_character_init(a, '/'));
+                emit_token(token_character_init('<'));
+                emit_token(token_character_init('/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(&p->input);
                 set_state(p, RAWTEXT_STATE);
@@ -741,8 +731,8 @@ void rawtext_end_tag_name_state(parser * p, arena * a) {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
-                emit_token(token_character_init(a, '<'));
-                emit_token(token_character_init(a, '/'));
+                emit_token(token_character_init('<'));
+                emit_token(token_character_init('/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(&p->input);
                 set_state(p, DATA_STATE);
@@ -754,8 +744,8 @@ void rawtext_end_tag_name_state(parser * p, arena * a) {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
-                emit_token(token_character_init(a, '<'));
-                emit_token(token_character_init(a, '/'));
+                emit_token(token_character_init('<'));
+                emit_token(token_character_init('/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(&p->input);
                 set_state(p, DATA_STATE);
@@ -771,8 +761,8 @@ void rawtext_end_tag_name_state(parser * p, arena * a) {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
-                emit_token(token_character_init(a, '<'));
-                emit_token(token_character_init(a, '/'));
+                emit_token(token_character_init('<'));
+                emit_token(token_character_init('/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(&p->input);
                 set_state(p, RAWTEXT_STATE);
@@ -791,12 +781,12 @@ void script_data_less_than_sign_state(parser * p, arena * a) {
             set_state(p, SCRIPT_DATA_ESCAPE_START_STATE);
             character_token_emit('<');
             character_token_emit('!');
-            emit_token(token_character_init(a, '<'));
-            emit_token(token_character_init(a, '!'));
+            emit_token(token_character_init('<'));
+            emit_token(token_character_init('!'));
             break;
         default:
             character_token_emit('<');
-            emit_token(token_character_init(a, '<'));
+            emit_token(token_character_init('<'));
             set_state(p, SCRIPT_DATA_STATE);
     }
 }
@@ -804,14 +794,14 @@ void script_data_less_than_sign_state(parser * p, arena * a) {
 void script_data_end_tag_open_state(parser * p, arena * a) {
     int c = input_system_consume(&p->input);
     if (is_ascii_alpha(c)) {
-        set_current_token(p, token_end_tag_init(a));
+        set_current_token(p, token_end_tag_init());
         input_system_reconsume(&p->input);
         set_state(p, SCRIPT_DATA_END_TAG_NAME_STATE);
     } else {
         character_token_emit('<');
         character_token_emit('/');
-        emit_token(token_character_init(a, '<'));
-        emit_token(token_character_init(a, '/'));
+        emit_token(token_character_init('<'));
+        emit_token(token_character_init('/'));
         input_system_reconsume(&p->input);
         set_state(p, SCRIPT_DATA_STATE);
     }
@@ -829,8 +819,8 @@ void script_data_end_tag_name_state(parser * p, arena * a) {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
-                emit_token(token_character_init(a, '<'));
-                emit_token(token_character_init(a, '/'));
+                emit_token(token_character_init('<'));
+                emit_token(token_character_init('/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(&p->input);
                 set_state(p, SCRIPT_DATA_STATE);
@@ -842,8 +832,8 @@ void script_data_end_tag_name_state(parser * p, arena * a) {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
-                emit_token(token_character_init(a, '<'));
-                emit_token(token_character_init(a, '/'));
+                emit_token(token_character_init('<'));
+                emit_token(token_character_init('/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(&p->input);
                 set_state(p, SCRIPT_DATA_STATE);
@@ -855,8 +845,8 @@ void script_data_end_tag_name_state(parser * p, arena * a) {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
-                emit_token(token_character_init(a, '<'));
-                emit_token(token_character_init(a, '/'));
+                emit_token(token_character_init('<'));
+                emit_token(token_character_init('/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(&p->input);
                 set_state(p, SCRIPT_DATA_STATE);
@@ -872,8 +862,8 @@ void script_data_end_tag_name_state(parser * p, arena * a) {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
-                emit_token(token_character_init(a, '<'));
-                emit_token(token_character_init(a, '/'));
+                emit_token(token_character_init('<'));
+                emit_token(token_character_init('/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(&p->input);
                 set_state(p, SCRIPT_DATA_STATE);
@@ -886,7 +876,7 @@ void script_data_escape_start_state(parser * p, arena * a) {
     if (c == '-') {
         set_state(p, SCRIPT_DATA_ESCAPE_START_DASH_STATE);
         character_token_emit('-');
-        emit_token(token_character_init(a, '-'));
+        emit_token(token_character_init('-'));
     } else {
         input_system_reconsume(&p->input);
         set_state(p, SCRIPT_DATA_STATE);
@@ -898,7 +888,7 @@ void script_data_escape_start_dash_state(parser * p, arena * a) {
     if (c == '-') {
         set_state(p, SCRIPT_DATA_ESCAPED_DASH_DASH_STATE);
         character_token_emit('-');
-        emit_token(token_character_init(a, '-'));
+        emit_token(token_character_init('-'));
     } else {
         input_system_reconsume(&p->input);
         set_state(p, SCRIPT_DATA_STATE);
@@ -911,7 +901,7 @@ void script_data_escaped_state(parser * p, arena * a) {
         case '-':
             set_state(p, SCRIPT_DATA_ESCAPED_DASH_STATE);
             character_token_emit('-');
-            emit_token(token_character_init(a, '-'));
+            emit_token(token_character_init('-'));
             break;
         case '<':
             set_state(p, SCRIPT_DATA_ESCAPED_LESS_THAN_SIGN_STATE);
@@ -919,16 +909,16 @@ void script_data_escaped_state(parser * p, arena * a) {
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             character_token_emit(UNICODE_REPLACEMENT_CHAR);
-            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
+            emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF: 
             LOG_ERROR(err_to_str(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             character_token_emit(c);
-            emit_token(token_character_init(a, c));
+            emit_token(token_character_init(c));
     }
 }
 
@@ -945,17 +935,17 @@ void script_data_escaped_dash_state(parser * p, arena * a) {
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             set_state(p, SCRIPT_DATA_ESCAPED_STATE);
             character_token_emit(UNICODE_REPLACEMENT_CHAR);
-            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
+            emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF: 
             LOG_ERROR(err_to_str(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             set_state(p, SCRIPT_DATA_ESCAPED_STATE);
             character_token_emit(c);
-            emit_token(token_character_init(a, c));
+            emit_token(token_character_init(c));
     }
 }
 
@@ -964,7 +954,7 @@ void script_data_escaped_dash_dash_state(parser * p, arena * a) {
     switch (c) {
         case '-': 
             character_token_emit('-');
-            emit_token(token_character_init(a, '-'));
+            emit_token(token_character_init('-'));
             break;
         case '<': 
             set_state(p, SCRIPT_DATA_ESCAPED_LESS_THAN_SIGN_STATE);
@@ -972,23 +962,23 @@ void script_data_escaped_dash_dash_state(parser * p, arena * a) {
         case '>': 
             set_state(p, SCRIPT_DATA_STATE);
             character_token_emit('>');
-            emit_token(token_character_init(a, '>'));
+            emit_token(token_character_init('>'));
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             set_state(p, SCRIPT_DATA_ESCAPED_STATE);
             character_token_emit(UNICODE_REPLACEMENT_CHAR);
-            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
+            emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF: 
             LOG_ERROR(err_to_str(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             set_state(p, SCRIPT_DATA_ESCAPED_STATE);
             character_token_emit(c);
-            emit_token(token_character_init(a, c));
+            emit_token(token_character_init(c));
     }
 }
 
@@ -1003,12 +993,12 @@ void script_data_escaped_less_than_sign_state(parser * p, arena * a) {
             if (is_ascii_alpha(c)) {
                 clear_temporary_buffer();
                 character_token_emit('<');
-                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init('<'));
                 input_system_reconsume(&p->input);
                 set_state(p, SCRIPT_DATA_DOUBLE_ESCAPE_START_STATE);
             } else {
                 character_token_emit('<');
-                emit_token(token_character_init(a, '<'));
+                emit_token(token_character_init('<'));
                 input_system_reconsume(&p->input);
                 set_state(p, SCRIPT_DATA_ESCAPED_STATE);
             }
@@ -1018,14 +1008,14 @@ void script_data_escaped_less_than_sign_state(parser * p, arena * a) {
 void script_data_escaped_end_tag_open_state(parser * p, arena * a) {
     int c = input_system_consume(&p->input);
     if (is_ascii_alpha(c)) {
-        set_current_token(p, token_end_tag_init(a));
+        set_current_token(p, token_end_tag_init());
         input_system_reconsume(&p->input);
         set_state(p, SCRIPT_DATA_ESCAPED_END_TAG_NAME_STATE);
     } else {
         character_token_emit('<');
         character_token_emit('/');
-        emit_token(token_character_init(a, '<'));
-        emit_token(token_character_init(a, '/'));
+        emit_token(token_character_init('<'));
+        emit_token(token_character_init('/'));
         input_system_reconsume(&p->input);
         set_state(p, SCRIPT_DATA_ESCAPED_STATE);
     }
@@ -1043,8 +1033,8 @@ void script_data_escaped_end_tag_name_state(parser * p, arena * a) {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
-                emit_token(token_character_init(a, '<'));
-                emit_token(token_character_init(a, '/'));
+                emit_token(token_character_init('<'));
+                emit_token(token_character_init('/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(&p->input);
                 set_state(p, SCRIPT_DATA_ESCAPED_STATE);
@@ -1056,8 +1046,8 @@ void script_data_escaped_end_tag_name_state(parser * p, arena * a) {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
-                emit_token(token_character_init(a, '<'));
-                emit_token(token_character_init(a, '/'));
+                emit_token(token_character_init('<'));
+                emit_token(token_character_init('/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(&p->input);
                 set_state(p, SCRIPT_DATA_ESCAPED_STATE);
@@ -1069,8 +1059,8 @@ void script_data_escaped_end_tag_name_state(parser * p, arena * a) {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
-                emit_token(token_character_init(a, '<'));
-                emit_token(token_character_init(a, '/'));
+                emit_token(token_character_init('<'));
+                emit_token(token_character_init('/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(&p->input);
                 set_state(p, SCRIPT_DATA_ESCAPED_STATE);
@@ -1086,8 +1076,8 @@ void script_data_escaped_end_tag_name_state(parser * p, arena * a) {
             } else {
                 character_token_emit('<');
                 character_token_emit('/');
-                emit_token(token_character_init(a, '<'));
-                emit_token(token_character_init(a, '/'));
+                emit_token(token_character_init('<'));
+                emit_token(token_character_init('/'));
                 emit_tokens_in_temp_buffer(); 
                 input_system_reconsume(&p->input);
                 set_state(p, SCRIPT_DATA_ESCAPED_STATE);
@@ -1110,17 +1100,17 @@ void script_data_double_escape_start_state(parser * p, arena * a) {
                 set_state(p, SCRIPT_DATA_ESCAPED_STATE);
             }
             character_token_emit(c);
-            emit_token(token_character_init(a, c));
+            emit_token(token_character_init(c));
             break;
         default:
             if (is_ascii_upper_alpha(c)) {
                 append_to_temp_buffer(tolower(c));
                 character_token_emit(c);
-                emit_token(token_character_init(a, c));
+                emit_token(token_character_init(c));
             } else if (is_ascii_lower_alpha(c)) {
                 append_to_temp_buffer(c);
                 character_token_emit(c);
-                emit_token(token_character_init(a, c));
+                emit_token(token_character_init(c));
             } else {
                 input_system_reconsume(&p->input);
                 set_state(p, SCRIPT_DATA_ESCAPED_STATE);
@@ -1134,26 +1124,26 @@ void script_data_double_escaped_state(parser * p, arena * a) {
         case '-':
             set_state(p, SCRIPT_DATA_DOUBLE_ESCAPED_DASH_STATE);
             character_token_emit('-');
-            emit_token(token_character_init(a, '-'));
+            emit_token(token_character_init('-'));
             break;
         case '<':
             set_state(p, SCRIPT_DATA_DOUBLE_ESCAPED_LESS_THAN_SIGN_STATE);
             character_token_emit('<');
-            emit_token(token_character_init(a, '<'));
+            emit_token(token_character_init('<'));
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             character_token_emit(UNICODE_REPLACEMENT_CHAR);
-            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
+            emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             character_token_emit(c);
-            emit_token(token_character_init(a, c));
+            emit_token(token_character_init(c));
     }
 }
 
@@ -1163,28 +1153,28 @@ void script_data_double_escaped_dash_state(parser * p, arena * a) {
         case '-':
             set_state(p, SCRIPT_DATA_DOUBLE_ESCAPED_DASH_DASH_STATE);
             character_token_emit('-');
-            emit_token(token_character_init(a, '-'));
+            emit_token(token_character_init('-'));
             break;
         case '<':
             set_state(p, SCRIPT_DATA_DOUBLE_ESCAPED_LESS_THAN_SIGN_STATE);
             character_token_emit('<');
-            emit_token(token_character_init(a, '<'));
+            emit_token(token_character_init('<'));
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             set_state(p, SCRIPT_DATA_DOUBLE_ESCAPED_STATE);
             character_token_emit(UNICODE_REPLACEMENT_CHAR);
-            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
+            emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             set_state(p, SCRIPT_DATA_DOUBLE_ESCAPED_STATE);
             character_token_emit(c);
-            emit_token(token_character_init(a, c));
+            emit_token(token_character_init(c));
     }
 }
 
@@ -1193,33 +1183,33 @@ void script_data_double_escaped_dash_dash_state(parser * p, arena * a) {
     switch (c) {
         case '-':
             character_token_emit('-');
-            emit_token(token_character_init(a, '-'));
+            emit_token(token_character_init('-'));
             break;
         case '<':
             set_state(p, SCRIPT_DATA_DOUBLE_ESCAPED_LESS_THAN_SIGN_STATE);
             character_token_emit('<');
-            emit_token(token_character_init(a, '<'));
+            emit_token(token_character_init('<'));
             break;
         case '>':
             set_state(p, SCRIPT_DATA_STATE);
             character_token_emit('>');
-            emit_token(token_character_init(a, '>'));
+            emit_token(token_character_init('>'));
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             set_state(p, SCRIPT_DATA_DOUBLE_ESCAPED_STATE);
             character_token_emit(UNICODE_REPLACEMENT_CHAR);
-            emit_token(token_character_init(a, UNICODE_REPLACEMENT_CHAR));
+            emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             set_state(p, SCRIPT_DATA_DOUBLE_ESCAPED_STATE);
             character_token_emit(c);
-            emit_token(token_character_init(a, c));
+            emit_token(token_character_init(c));
     }
 }
 
@@ -1230,7 +1220,7 @@ void script_data_double_escaped_less_than_sign_state(parser * p, arena * a) {
             clear_temporary_buffer();
             set_state(p, SCRIPT_DATA_DOUBLE_ESCAPE_END_STATE);
             character_token_emit('/');
-            emit_token(token_character_init(a, '/'));
+            emit_token(token_character_init('/'));
             break;
         default:
             input_system_reconsume(&p->input);
@@ -1253,17 +1243,17 @@ void script_data_double_escape_end_state(parser * p, arena * a) {
                 set_state(p, SCRIPT_DATA_DOUBLE_ESCAPED_STATE);
             }
             character_token_emit(c);
-            emit_token(token_character_init(a, c));
+            emit_token(token_character_init(c));
             break;
         default:
             if (is_ascii_upper_alpha(c)) {
                 append_to_temp_buffer(tolower(c));
                 character_token_emit(c);
-                emit_token(token_character_init(a, c));
+                emit_token(token_character_init(c));
             } else if (is_ascii_lower_alpha(c)) {
                 append_to_temp_buffer(c);
                 character_token_emit(c);
-                emit_token(token_character_init(a, c));
+                emit_token(token_character_init(c));
             } else {
                 input_system_reconsume(&p->input);
                 set_state(p, SCRIPT_DATA_DOUBLE_ESCAPED_STATE);
@@ -1355,7 +1345,7 @@ void after_attribute_name_state(parser * p, arena * a) {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_TAG_PARSE_ERROR));
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             start_new_attribute_for_current_tag_token();
@@ -1407,7 +1397,7 @@ void attribute_value_double_quoted_state(parser * p, arena * a) {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_TAG_PARSE_ERROR));
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             append_to_current_tag_token_attribute_value(c);
@@ -1431,7 +1421,7 @@ void attribute_value_single_quoted_state(parser * p, arena * a) {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_TAG_PARSE_ERROR));
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             append_to_current_tag_token_attribute_value(c);
@@ -1470,7 +1460,7 @@ void attribute_value_unquoted_state(parser * p, arena * a) {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_TAG_PARSE_ERROR));
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             append_to_current_tag_token_attribute_value(c);
@@ -1492,7 +1482,7 @@ void after_attribute_value_quoted_state(parser * p, arena * a) {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_TAG_PARSE_ERROR));
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             LOG_ERROR(err_to_str(MISSING_WHITESPACE_BETWEEN_ATTRIBUTES_PARSE_ERROR));
@@ -1512,7 +1502,7 @@ void self_closing_start_tag_state(parser * p, arena * a) {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_TAG_PARSE_ERROR));
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             LOG_ERROR(err_to_str(UNEXPECTED_SOLIDUS_IN_TAG_PARSE_ERROR));
@@ -1531,7 +1521,7 @@ void bogus_comment_state(parser * p, arena * a) {
         case EOF:
             emit_current_token(p, COMMENT);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
@@ -1548,7 +1538,7 @@ void markup_declaration_open_state(parser * p, arena * a) {
     if (buf.data[0] == '-' && buf.data[1] == '-') {
         input_system_consume(&p->input);
         input_system_consume(&p->input);
-        set_current_token(p, token_comment_init(a));
+        set_current_token(p, token_comment_init());
         set_state(p, COMMENT_START_STATE);
         return;
     } 
@@ -1563,7 +1553,7 @@ void markup_declaration_open_state(parser * p, arena * a) {
                 set_state(p, CDATA_SECTION_STATE);
             } else {
                 LOG_ERROR(err_to_str(CDATA_IN_HTML_CONTENT_PARSE_ERROR));
-                set_current_token(p, token_comment_init(a));
+                set_current_token(p, token_comment_init());
                 append_to_current_tag_token_comment_data('[');
                 append_to_current_tag_token_comment_data('C');
                 append_to_current_tag_token_comment_data('D');
@@ -1590,7 +1580,7 @@ void markup_declaration_open_state(parser * p, arena * a) {
     }
 
     LOG_ERROR(err_to_str(INCORRECTLY_OPENED_COMMENT_PARSE_ERROR));
-    set_current_token(p, token_comment_init(a));
+    set_current_token(p, token_comment_init());
     set_state(p, BOGUS_COMMENT_STATE);
 }
 
@@ -1626,7 +1616,7 @@ void comment_start_dash_state(parser * p, arena * a) {
             LOG_ERROR(err_to_str(EOF_IN_COMMENT_PARSE_ERROR));
             emit_current_token(p, COMMENT);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             append_to_current_tag_token_comment_data('-');
@@ -1653,7 +1643,7 @@ void comment_state(parser * p, arena * a) {
             LOG_ERROR(err_to_str(EOF_IN_COMMENT_PARSE_ERROR));
             emit_current_token(p, COMMENT);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             append_to_current_tag_token_comment_data(c);
@@ -1725,7 +1715,7 @@ void comment_end_dash_state(parser * p, arena * a) {
             LOG_ERROR(err_to_str(EOF_IN_COMMENT_PARSE_ERROR));
             emit_current_token(p, COMMENT);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             append_to_current_tag_token_comment_data('-');
@@ -1751,7 +1741,7 @@ void comment_end_state(parser * p, arena * a) {
             LOG_ERROR(err_to_str(EOF_IN_COMMENT_PARSE_ERROR));
             emit_current_token(p, COMMENT);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             append_to_current_tag_token_comment_data('-');
@@ -1779,7 +1769,7 @@ void comment_end_bang_state(parser * p, arena * a) {
             LOG_ERROR(err_to_str(EOF_IN_COMMENT_PARSE_ERROR));
             emit_current_token(p, COMMENT);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             append_to_current_tag_token_comment_data('-');
@@ -1805,11 +1795,11 @@ void doctype_state(parser * p, arena * a) {
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_COMMENT_PARSE_ERROR));
-            set_current_token(p, token_doctype_init(a));
+            set_current_token(p, token_doctype_init());
             set_doctype_token_force_quirks_flag(true);
             emit_current_token(p, TOKEN_TYPE_COUNT);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             LOG_ERROR(err_to_str(MISSING_WHITESPACE_BEFORE_DOCTYPE_NAME_PARSE_ERROR));
@@ -1829,32 +1819,32 @@ void before_doctype_name_state(parser * p, arena * a) {
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
-            set_current_token(p, token_doctype_init(a));
+            set_current_token(p, token_doctype_init());
             append_to_current_tag_token_name(UNICODE_REPLACEMENT_CHAR);
             set_state(p, DOCTYPE_NAME_STATE);
             break;
         case '>':
             LOG_ERROR(err_to_str(MISSING_DOCTYPE_NAME_PARSE_ERROR));
-            set_current_token(p, token_doctype_init(a));
+            set_current_token(p, token_doctype_init());
             set_doctype_token_force_quirks_flag(true);
             set_state(p, DATA_STATE);
             emit_current_token(p, TOKEN_TYPE_COUNT);
             break;
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_DOCTYPE_PARSE_ERROR));
-            set_current_token(p, token_doctype_init(a));
+            set_current_token(p, token_doctype_init());
             set_doctype_token_force_quirks_flag(true);
             emit_current_token(p, TOKEN_TYPE_COUNT);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             if (is_ascii_upper_alpha(c)) {
-                set_current_token(p, token_doctype_init(a));
+                set_current_token(p, token_doctype_init());
                 append_to_current_tag_token_name(tolower(c));
                 set_state(p, DOCTYPE_NAME_STATE);
             } else {
-                set_current_token(p, token_doctype_init(a));
+                set_current_token(p, token_doctype_init());
                 append_to_current_tag_token_name(c);
                 set_state(p, DOCTYPE_NAME_STATE);
             }
@@ -1883,7 +1873,7 @@ void doctype_name_state(parser * p, arena * a) {
             set_doctype_token_force_quirks_flag(true);
             emit_current_token(p, DOCTYPE);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             if (is_ascii_upper_alpha(c)) {
@@ -1912,7 +1902,7 @@ void after_doctype_name_state(parser * p, arena * a) {
             set_doctype_token_force_quirks_flag(true);
             emit_current_token(p, DOCTYPE);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             return;
     }
 
@@ -1977,7 +1967,7 @@ void after_doctype_public_keyword_state(parser * p, arena * a) {
             set_doctype_token_force_quirks_flag(true);
             emit_current_token(p, DOCTYPE);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             LOG_ERROR(err_to_str(MISSING_QUOTE_BEFORE_DOCTYPE_PUBLIC_IDENTIFIER_PARSE_ERROR));
@@ -2015,7 +2005,7 @@ void before_doctype_public_identifier_state(parser * p, arena * a) {
             set_doctype_token_force_quirks_flag(true);
             emit_current_token(p, DOCTYPE);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             LOG_ERROR(err_to_str(MISSING_QUOTE_BEFORE_DOCTYPE_PUBLIC_IDENTIFIER_PARSE_ERROR));
@@ -2069,7 +2059,7 @@ void doctype_public_identifier_single_quoted_state(parser * p, arena * a) {
             set_doctype_token_force_quirks_flag(true);
             emit_current_token(p, DOCTYPE);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             append_to_current_tag_token_identifier(c);
@@ -2104,7 +2094,7 @@ void after_doctype_public_identifier_state(parser * p, arena * a) {
             set_doctype_token_force_quirks_flag(true);
             emit_current_token(p, DOCTYPE);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             LOG_ERROR(err_to_str(MISSING_QUOTE_BEFORE_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR));
@@ -2140,7 +2130,7 @@ void between_doctype_public_and_system_identifiers_state(parser * p, arena * a) 
             set_doctype_token_force_quirks_flag(true);
             emit_current_token(p, DOCTYPE);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             LOG_ERROR(err_to_str(MISSING_QUOTE_BEFORE_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR));
@@ -2179,7 +2169,7 @@ void after_doctype_system_keyword_state(parser * p, arena * a) {
             set_doctype_token_force_quirks_flag(true);
             emit_current_token(p, DOCTYPE);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             LOG_ERROR(err_to_str(MISSING_QUOTE_BEFORE_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR));
@@ -2217,7 +2207,7 @@ void before_doctype_system_identifier_state(parser * p, arena * a) {
             set_doctype_token_force_quirks_flag(true);
             emit_current_token(p, DOCTYPE);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             LOG_ERROR(err_to_str(MISSING_QUOTE_BEFORE_DOCTYPE_SYSTEM_IDENTIFIER_PARSE_ERROR));
@@ -2249,7 +2239,7 @@ void doctype_system_identifier_double_quoted_state(parser * p, arena * a) {
             set_doctype_token_force_quirks_flag(true);
             emit_current_token(p, DOCTYPE);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             append_to_current_tag_token_identifier(c);
@@ -2277,7 +2267,7 @@ void doctype_system_identifier_single_quoted_state(parser * p, arena * a) {
             set_doctype_token_force_quirks_flag(true);
             emit_current_token(p, DOCTYPE);
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             append_to_current_tag_token_identifier(c);
@@ -2309,7 +2299,7 @@ void bogus_doctype_state(parser * p, arena * a) {
     switch (c) {
         case '>':
             set_state(p, DATA_STATE);
-            emit_token(token_doctype_init(a));
+            emit_token(token_doctype_init());
             break;
         case '\0':
             LOG_ERROR(err_to_str(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
@@ -2318,7 +2308,7 @@ void bogus_doctype_state(parser * p, arena * a) {
         case EOF:
             eof_token_emit(); //logging
             emit_current_token(p, DOCTYPE);
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
             // otherwise intentionally ignore character
     }
@@ -2333,11 +2323,11 @@ void cdata_section_state(parser * p, arena * a) {
         case EOF:
             LOG_ERROR(err_to_str(EOF_IN_CDATA_PARSE_ERROR));
             eof_token_emit();
-            emit_token(token_eof_init(a));
+            emit_token(token_eof_init());
             break;
         default:
             character_token_emit(c);
-            emit_token(token_character_init(a, c));
+            emit_token(token_character_init(c));
     }
 }
 
@@ -2349,7 +2339,7 @@ void cdata_section_bracket_state(parser * p, arena * a) {
             break;
         default:
             character_token_emit(']');
-            emit_token(token_character_init(a, ']'));
+            emit_token(token_character_init(']'));
             input_system_reconsume(&p->input);
             set_state(p, CDATA_SECTION_STATE);
     }
@@ -2360,7 +2350,7 @@ void cdata_section_end_state(parser * p, arena * a) {
     switch (c) {
         case ']':
             character_token_emit(']');
-            emit_token(token_character_init(a, ']'));
+            emit_token(token_character_init(']'));
             break;
         case '>':
             set_state(p, DATA_STATE);
@@ -2368,8 +2358,8 @@ void cdata_section_end_state(parser * p, arena * a) {
         default:
             character_token_emit(']');
             character_token_emit(']');
-            emit_token(token_character_init(a, ']'));
-            emit_token(token_character_init(a, ']'));
+            emit_token(token_character_init(']'));
+            emit_token(token_character_init(']'));
             input_system_reconsume(&p->input);
             set_state(p, CDATA_SECTION_STATE);
     }
@@ -2431,7 +2421,7 @@ void ambiguous_ampersand_state(parser * p, arena * a) {
             append_to_current_tag_token_attribute_value(c);
         } else {
             character_token_emit(c);
-            emit_token(token_character_init(a, c));
+            emit_token(token_character_init(c));
         }
     } else if (c == ';') {
         LOG_ERROR(err_to_str(UNKNOWN_NAMED_CHARACTER_REFERENCE_PARSE_ERROR));

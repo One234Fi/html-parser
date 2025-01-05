@@ -1,16 +1,16 @@
+#include "parser/token.h"
 #include "tokenizer.h"
 #include "node_stack.h"
 #include "node_types.h"
+#include "common.h"
 #include <ctype.h>
 #include <stdbool.h>
-#include "common.h"
-#include "token/token.h"
 #include <string.h>
 
 
 
-void tree_construction_phase(token * input);
-void tree_construction_dispatcher(token * input);
+void tree_construction_phase(token input);
+void tree_construction_dispatcher(token input);
 void process();
 
 
@@ -53,34 +53,34 @@ void tree_construction_init() {
     };
 }
 
-void tree_construction_phase(token * input) {
+void tree_construction_phase(token input) {
     tree_construction_dispatcher(input);
 }
 
-void tree_construction_dispatcher(token * input) {
-    //node n = get_adjusted_current_node();
-    //if ((node_stack_is_empty(state.open_elements_stack))
-    //    || (in_html_namespace(n)) 
-    //    || (is_mathml_text_integration_point(n)
-    //        && input.type == START_TAG
-    //        && (strncmp(container_of(input, token_start_tag, token), "mglyph", strlen("mglyph")) != 0)
-    //        && (strncmp(input.val.start_tag.tag_name, "malignmark", strlen("malignmark")) != 0)) 
-    //    || (is_mathml_text_integration_point(n)
-    //        && input.type == CHARACTER) 
-    //    || (is_mathml_annotation_xml_element(n)
-    //        && input.type == START_TAG
-    //        && (strncmp(input.val.start_tag.tag_name, "svg", strlen("svg")) == 0)) 
-    //    || (is_html_integration_point(n)
-    //        && input.type == START_TAG) 
-    //    || (is_html_integration_point(n)
-    //        && input.type == CHARACTER)
-    //    || (input.type == END_OF_FILE)) {
+void tree_construction_dispatcher(token input) {
+    node n = get_adjusted_current_node();
+    if ((node_stack_is_empty(state.open_elements_stack))
+        || (in_html_namespace(n)) 
+        || (is_mathml_text_integration_point(n)
+            && input.type == START_TAG
+            && (strncmp(input.start_tag.name.string.data, "mglyph", strlen("mglyph")) != 0)
+            && (strncmp(input.start_tag.name.string.data, "malignmark", strlen("malignmark")) != 0)) 
+        || (is_mathml_text_integration_point(n)
+            && input.type == CHARACTER) 
+        || (is_mathml_annotation_xml_element(n)
+            && input.type == START_TAG
+            && (strncmp(input.start_tag.name.string.data, "svg", strlen("svg")) == 0)) 
+        || (is_html_integration_point(n)
+            && input.type == START_TAG) 
+        || (is_html_integration_point(n)
+            && input.type == CHARACTER)
+        || (input.type == END_OF_FILE)) {
 
-    //    //insertion mode processing
-    //    process();
-    //} else {
-    //    //foreign content processing
-    //}
+        //insertion mode processing
+        process();
+    } else {
+        //foreign content processing
+    }
 }
 
 node get_current_node() {
@@ -161,34 +161,78 @@ typedef enum insertion_mode {
     AFTER_AFTER_FRAMESET
 } insertion_mode;
 
-void process() {
-    //switch (parser.insertion_mode) {
-    //    case INITIAL: 
-
-    //        break;
-    //    case BEFORE_HTML: break;
-    //    case BEFORE_HEAD: break;
-    //    case IN_HEAD: break;
-    //    case IN_HEAD_NOSCRIPT: break;
-    //    case AFTER_HEAD: break;
-    //    case IN_BODY: break;
-    //    case TEXT: break;
-    //    case IN_TABLE: break;
-    //    case IN_TABLE_TEXT: break; 
-    //    case IN_CAPTION: break; 
-    //    case IN_COLUMN_GROUP: break;
-    //    case IN_TABLE_BODY: break;
-    //    case IN_ROW: break;
-    //    case IN_CELL: break;
-    //    case IN_SELECT: break;
-    //    case IN_SELECT_IN_TABLE: break;
-    //    case IN_TEMPLATE: break;
-    //    case AFTER_BODY: break;
-    //    case IN_FRAMESET: break;
-    //    case AFTER_FRAMESET: break;
-    //    case AFTER_AFTER_BODY: break;
-    //    case AFTER_AFTER_FRAMESET: break;
-    //    default:
-    //        LOG_ERROR("Invalid insertion mode type!");
-    //}
+void process(parser * p, token t) {
+    switch (p->insertion_mode) {
+        case INSERTION_MODE_INITIAL: 
+            {
+                switch (t.type) {
+                    case CHARACTER: 
+                        {
+                            if (t.character.data == '\t' ||
+                                t.character.data == '\n' ||
+                                t.character.data == '\f' ||
+                                t.character.data == '\r' ||
+                                t.character.data == ' ') {
+                                //ignore
+                                break;
+                            }
+                            //if not an iframe srcdoc doc, then parse error
+                            p->insertion_mode = INSERTION_MODE_BEFORE_HTML;
+                            process(p, t); //reprocess
+                        }
+                        break;
+                    case COMMENT:
+                        {
+                            //TODO: append a comment to doc node
+                        }
+                        break;
+                    case DOCTYPE:
+                        {
+                            if (!t.doctype.name.exists ||
+                                    !string_equal(t.doctype.name.string, make_string("html")) ||
+                                    t.doctype.public_id.exists) {
+                                //parse_error
+                            }
+                            //append a doctype node to doc node
+                            //  name: t.name : ""
+                            //  public_id: t.public_id : ""
+                            //  system_id: t.system_id: ""
+                            //
+                            //  then handle quicks mode check
+                            p->insertion_mode = INSERTION_MODE_BEFORE_HTML;
+                            break;
+                        }
+                        break;
+                    default:
+                        //if not an iframe srcdoc doc, then parse error
+                        p->insertion_mode = INSERTION_MODE_BEFORE_HTML;
+                        process(p, t); //reprocess
+                }
+            }
+            break;
+        case BEFORE_HTML: break;
+        case BEFORE_HEAD: break;
+        case IN_HEAD: break;
+        case IN_HEAD_NOSCRIPT: break;
+        case AFTER_HEAD: break;
+        case IN_BODY: break;
+        case TEXT: break;
+        case IN_TABLE: break;
+        case IN_TABLE_TEXT: break; 
+        case IN_CAPTION: break; 
+        case IN_COLUMN_GROUP: break;
+        case IN_TABLE_BODY: break;
+        case IN_ROW: break;
+        case IN_CELL: break;
+        case IN_SELECT: break;
+        case IN_SELECT_IN_TABLE: break;
+        case IN_TEMPLATE: break;
+        case AFTER_BODY: break;
+        case IN_FRAMESET: break;
+        case AFTER_FRAMESET: break;
+        case AFTER_AFTER_BODY: break;
+        case AFTER_AFTER_FRAMESET: break;
+        default:
+            LOG_ERROR("Invalid insertion mode type!");
+    }
 }

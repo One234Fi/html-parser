@@ -6,7 +6,9 @@
  * 08/24/2024
  */
 
-#include "arena/arena.h"
+#include "input.h"
+#include "parser/token.h"
+#include "types/arena.h"
 
 
 typedef struct parser parser;
@@ -122,5 +124,16 @@ enum INSERTION_MODE_TYPE {
     INSERTION_MODE_AFTER_AFTER_BODY,
     INSERTION_MODE_AFTER_AFTER_FRAMESET,
 };
+
+typedef struct parser {
+    token current_token;
+    enum TOKENIZER_STATE_TYPE state;
+    enum TOKENIZER_STATE_TYPE return_state;
+    enum INSERTION_MODE_TYPE insertion_mode;
+    bool parser_pause_flag;
+    opt_str last_start_tag_name;
+    arena * arena;
+    input_system input;
+} parser;
 
 #endif
