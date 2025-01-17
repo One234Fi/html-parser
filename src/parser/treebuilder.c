@@ -11,7 +11,6 @@
 
 void tree_construction_phase(token input);
 void tree_construction_dispatcher(token input);
-void process();
 
 
 bool has_attribute(node n, char* attr_type);
@@ -58,29 +57,29 @@ void tree_construction_phase(token input) {
 }
 
 void tree_construction_dispatcher(token input) {
-    node n = get_adjusted_current_node();
-    if ((node_stack_is_empty(state.open_elements_stack))
-        || (in_html_namespace(n)) 
-        || (is_mathml_text_integration_point(n)
-            && input.type == START_TAG
-            && (strncmp(input.start_tag.name.string.data, "mglyph", strlen("mglyph")) != 0)
-            && (strncmp(input.start_tag.name.string.data, "malignmark", strlen("malignmark")) != 0)) 
-        || (is_mathml_text_integration_point(n)
-            && input.type == CHARACTER) 
-        || (is_mathml_annotation_xml_element(n)
-            && input.type == START_TAG
-            && (strncmp(input.start_tag.name.string.data, "svg", strlen("svg")) == 0)) 
-        || (is_html_integration_point(n)
-            && input.type == START_TAG) 
-        || (is_html_integration_point(n)
-            && input.type == CHARACTER)
-        || (input.type == END_OF_FILE)) {
-
-        //insertion mode processing
-        process();
-    } else {
-        //foreign content processing
-    }
+//    node n = get_adjusted_current_node();
+//    if ((node_stack_is_empty(state.open_elements_stack))
+//        || (in_html_namespace(n)) 
+//        || (is_mathml_text_integration_point(n)
+//            && input.type == START_TAG
+//            && (strncmp(input.start_tag.name.string.data, "mglyph", strlen("mglyph")) != 0)
+//            && (strncmp(input.start_tag.name.string.data, "malignmark", strlen("malignmark")) != 0)) 
+//        || (is_mathml_text_integration_point(n)
+//            && input.type == CHARACTER) 
+//        || (is_mathml_annotation_xml_element(n)
+//            && input.type == START_TAG
+//            && (strncmp(input.start_tag.name.string.data, "svg", strlen("svg")) == 0)) 
+//        || (is_html_integration_point(n)
+//            && input.type == START_TAG) 
+//        || (is_html_integration_point(n)
+//            && input.type == CHARACTER)
+//        || (input.type == END_OF_FILE)) {
+//
+//        //insertion mode processing
+//        //process();
+//    } else {
+//        //foreign content processing
+//    }
 }
 
 node get_current_node() {
@@ -189,7 +188,7 @@ void process(parser * p, token t) {
                     case DOCTYPE:
                         {
                             if (!t.doctype.name.exists ||
-                                    !string_equal(t.doctype.name.string, make_string("html")) ||
+//                                    !string_equal(t.doctype.name.string, make_string("html")) ||
                                     t.doctype.public_id.exists) {
                                 //parse_error
                             }

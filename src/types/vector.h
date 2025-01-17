@@ -15,8 +15,8 @@
 #include <assert.h>
 #include <stddef.h>
 
-void grow(void * slice, size stride, size align, arena * a);
+void grow(void * slice, size stride, arena * a);
 
-#define push(s, arena)  ((s)->len >= (s)->cap ? grow(s, sizeof(*(s)->data), _Alignof(*(s)->data), arena), (s)->data + (s)->len++ : (s)->data + (s)->len++) 
+#define push(s, arena)  ((s)->len >= (s)->cap ? grow(s, sizeof(*(s)->data), arena), (s)->data + (s)->len++ : (s)->data + (s)->len++) 
 
 #endif

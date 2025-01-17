@@ -10,12 +10,6 @@
 #include "parser/token.h"
 #include "types/arena.h"
 
-
-typedef struct parser parser;
-
-void execute(parser * p, arena * a);
-
-
 enum TOKENIZER_STATE_TYPE {
     DATA_STATE,
     RCDATA_STATE,
@@ -97,6 +91,7 @@ enum TOKENIZER_STATE_TYPE {
     HEXADECIMAL_CHARACTER_REFERENCE_STATE,
     DECIMAL_CHARACTER_REFERENCE_STATE,
     NUMERIC_CHARACTER_REFERENCE_END_STATE,
+    INVALID_TOKENIZER_STATE,
 };
 
 enum INSERTION_MODE_TYPE {
@@ -125,7 +120,8 @@ enum INSERTION_MODE_TYPE {
     INSERTION_MODE_AFTER_AFTER_FRAMESET,
 };
 
-typedef struct parser {
+typedef struct parser parser;
+struct parser {
     token current_token;
     enum TOKENIZER_STATE_TYPE state;
     enum TOKENIZER_STATE_TYPE return_state;
@@ -134,6 +130,11 @@ typedef struct parser {
     opt_str last_start_tag_name;
     arena * arena;
     input_system input;
-} parser;
+    string temp_buf;
+    int char_ref_code;
+};
+
+void execute(parser * p);
+parser parser_init(arena * a, input_system i);
 
 #endif

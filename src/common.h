@@ -15,6 +15,9 @@
 #define LOG_WARN(message) fprintf(stderr, BLUE"%s, %s, %d:"YELLOW" \"%s\"\n"COLOR_RESET, __FILE__, __func__, __LINE__, message)
 #define ASSERT(expr, message, return_val) if (!(expr)) { LOG_ERROR(message); return return_val; } 
 
+#define str(x) #x
+#define xstr(x) str(x)
+
 #define container_of(ptr, type, member) ((type *)((char *)(ptr) - offsetof(type, member)))
 
 #endif

@@ -1,20 +1,20 @@
 #ifndef OPTION_MODULE_H
 #define OPTION_MODULE_H
 
-#include "types/str.h"
-#include "types/types.h"
+#include "types/arena.h"
 #include <stdbool.h>
 #include <stddef.h>
 
 typedef struct {
-    union {
-        string string;
-        i32 i32;
-    };
+    void * val;
     bool exists;
 } opt;
 
 typedef opt opt_str;
 typedef opt opt_i32;
+
+#define opt_get(opt, type) ((type *) (opt->val))
+
+void opt_str_append(opt_str* s, arena * a, char c);
 
 #endif
