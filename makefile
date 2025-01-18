@@ -5,6 +5,7 @@ CC := gcc
 STDFLAGS := -std=c17 -pthread -g
 WFLAGS := -Wall -Wextra -Wno-unused-parameter -Werror=return-type
 LDLIBS := -lc
+#LDFLAGS := -fsanitize=address,undefined -fsanitize-recover=address,undefined
 
 #config
 TARGET_EXEC := a.out
@@ -29,7 +30,8 @@ TEST_DEPS := $(TEST_OBJS:.o=.d)
 
 INC_FLAGS := $(addprefix -I,$(INC_DIRS))
 
-CFLAGS := $(STDFLAGS) $(WFLAGS) $(INC_FLAGS) -MMD -MP
+CFLAGS := $(STDFLAGS) $(WFLAGS) $(INC_FLAGS) -MMD -MP 
+#CFLAGS += -fsanitize=address,undefined -fsanitize-recover=address,undefined
 
 #steps
 

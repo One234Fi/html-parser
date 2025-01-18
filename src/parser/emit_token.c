@@ -6,7 +6,7 @@
 bool emit_token(token t) {
     char * s = token_to_string(t);
     if (s != NULL) {
-        fprintf(stdout, "%s\n", s);
+        fprintf(stdout, "%s", s);
         free(s);
     }
 

@@ -17,7 +17,7 @@ int main(int argc, char* argv[]) {
         arena global = arena_init(1 << 16);
         input_system s = input_system_init(argv[1], &global);
         parser p = parser_init(&global, s);
-        while (!input_system_empty(&s)) {
+        while (!p.eof_emitted) {
             execute(&p);
         }
     }

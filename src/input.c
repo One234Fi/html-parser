@@ -13,7 +13,7 @@
 void normalize_newlines(string * sb);
 
 bool input_system_empty(input_system * s) {
-    return s->len == 0;
+    return s->len <= 0;
 }
 
 input_system input_system_init(const char* filename, arena * a) {
@@ -55,7 +55,10 @@ input_system input_system_init(const char* filename, arena * a) {
 }
 
 int input_system_consume(input_system * s) {
-    assert(s->len >= 0);
+    if (s->len <= 0) {
+        LOG_INFO("Input system empty: Emitting EOF");
+        return EOF;
+    }
     char c = *s->front;
     s->front++;
     s->len--;

@@ -19,6 +19,10 @@
 #include <stdio.h>
 #include <string.h>
 
+const char * TOKENIZER_STATE_STRINGS[] = {
+    DEFINE_STATE_TYPES(MAKE_ENUM_STRINGS)
+};
+
 parser parser_init(arena * a, input_system i) {
     parser p = {0};
     p.arena = a;
@@ -178,11 +182,6 @@ token get_current_token(parser * p) {
     return p->current_token;
 }
 
-
-void eof_token_emit() {
-    LOG_INFO("EOF TOKEN");
-}
-
 void set_self_closing_tag_for_current_token(parser * p, bool b) {
     if (p->current_token.type == START_TAG) {
         p->current_token.start_tag.self_closing = true;
@@ -198,6 +197,8 @@ void append_to_current_tag_token_name(parser * p, int c) {
         opt_str_append(&p->current_token.start_tag.name, p->arena, c);
     } else if (p->current_token.type == END_TAG) {
         opt_str_append(&p->current_token.end_tag.name, p->arena, c);
+    } else if (p->current_token.type == DOCTYPE) {
+        opt_str_append(&p->current_token.doctype.name, p->arena, c);
     } else {
         LOG_ERROR("Token of type "xstr(p->current_token.type)" does not have a tag name");
     }
@@ -410,7 +411,11 @@ void execute(parser * p) {
     if (p->parser_pause_flag) {
         return;
     }
-    LOG_INFO("STATE: "xstr(get_state(p)));
+    size l = snprintf(NULL, 0, "STATE: %s", TOKENIZER_STATE_STRINGS[p->state]);
+    char buf[l+1];
+    buf[l] = 0;
+    sprintf(buf, "STATE: %s", TOKENIZER_STATE_STRINGS[p->state]);
+    LOG_INFO(buf);
     state_handlers[get_state(p)](p);
 }
 
@@ -429,7 +434,7 @@ void data_state(parser * p) {
             emit_token(token_character_init(c));
             break;
         case EOF:
-            eof_token_emit(); //logging
+		    p->eof_emitted = true;
             emit_token(token_eof_init());
             break;
         default:
@@ -452,7 +457,7 @@ void rcdata_state(parser * p) {
             emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
-            eof_token_emit();
+            p->eof_emitted = true;
             emit_token(token_eof_init());
             break;
         default:
@@ -471,7 +476,7 @@ void rawtext_state(parser * p) {
             emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
-            eof_token_emit();
+            p->eof_emitted = true;
             emit_token(token_eof_init());
             break;
         default:
@@ -490,7 +495,7 @@ void script_data_state(parser * p) {
             emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
-            eof_token_emit();
+            p->eof_emitted = true;
             emit_token(token_eof_init());
             break;
         default:
@@ -506,7 +511,7 @@ void plaintext_state(parser * p) {
             emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
-            eof_token_emit();
+            p->eof_emitted = true;
             emit_token(token_eof_init());
             break;
         default:
@@ -530,9 +535,9 @@ void tag_open_state(parser * p) {
             set_state(p, BOGUS_COMMENT_STATE);
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_BEFORE_TAG_NAME_PARSE_ERROR));
             emit_token(token_character_init('<'));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -558,8 +563,8 @@ void end_tag_open_state(parser * p) {
             set_state(p, DATA_STATE);
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_BEFORE_TAG_NAME_PARSE_ERROR));
-            eof_token_emit();
             emit_token(token_character_init('/'));
             emit_token(token_eof_init());
             break;
@@ -598,8 +603,8 @@ void tag_name_state(parser * p) {
             append_to_current_tag_token_name(p, UNICODE_REPLACEMENT_CHAR);
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_TAG_PARSE_ERROR));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -898,9 +903,9 @@ void script_data_escaped_state(parser * p) {
             LOG_ERROR(xstr(UNEXPECTED_NULL_CHARACTER_PARSE_ERROR));
             emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
-        case EOF: 
+        case EOF:
+            p->eof_emitted = true; 
             LOG_ERROR(xstr(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -922,9 +927,9 @@ void script_data_escaped_dash_state(parser * p) {
             set_state(p, SCRIPT_DATA_ESCAPED_STATE);
             emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
-        case EOF: 
+        case EOF:
+            p->eof_emitted = true; 
             LOG_ERROR(xstr(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -951,9 +956,9 @@ void script_data_escaped_dash_dash_state(parser * p) {
             set_state(p, SCRIPT_DATA_ESCAPED_STATE);
             emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
-        case EOF: 
+        case EOF:
+            p->eof_emitted = true; 
             LOG_ERROR(xstr(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1099,8 +1104,8 @@ void script_data_double_escaped_state(parser * p) {
             emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1125,8 +1130,8 @@ void script_data_double_escaped_dash_state(parser * p) {
             emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1155,8 +1160,8 @@ void script_data_double_escaped_dash_dash_state(parser * p) {
             emit_token(token_character_init(UNICODE_REPLACEMENT_CHAR));
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_SCRIPT_HTML_COMMENT_LIKE_TEXT_PARSE_ERROR));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1291,8 +1296,8 @@ void after_attribute_name_state(parser * p) {
             set_state(p, DATA_STATE);
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_TAG_PARSE_ERROR));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1343,8 +1348,8 @@ void attribute_value_double_quoted_state(parser * p) {
             append_to_current_tag_token_attribute_value(p, UNICODE_REPLACEMENT_CHAR);
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_TAG_PARSE_ERROR));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1367,8 +1372,8 @@ void attribute_value_single_quoted_state(parser * p) {
             append_to_current_tag_token_attribute_value(p, UNICODE_REPLACEMENT_CHAR);
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_TAG_PARSE_ERROR));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1406,8 +1411,8 @@ void attribute_value_unquoted_state(parser * p) {
             append_to_current_tag_token_attribute_value(p, c);
             break;
         case EOF:
+		    p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_TAG_PARSE_ERROR));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1428,8 +1433,8 @@ void after_attribute_value_quoted_state(parser * p) {
             set_state(p, SELF_CLOSING_START_TAG_STATE);
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_TAG_PARSE_ERROR));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1448,8 +1453,8 @@ void self_closing_start_tag_state(parser * p) {
             emit_token(get_current_token(p));
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_TAG_PARSE_ERROR));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1467,8 +1472,8 @@ void bogus_comment_state(parser * p) {
             emit_token(get_current_token(p));
             break;
         case EOF:
+            p->eof_emitted = true;
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         case '\0':
@@ -1561,9 +1566,9 @@ void comment_start_dash_state(parser * p) {
             emit_token(get_current_token(p));
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_COMMENT_PARSE_ERROR));
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1588,9 +1593,9 @@ void comment_state(parser * p) {
             append_to_current_tag_token_comment_data(p, UNICODE_REPLACEMENT_CHAR);
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_COMMENT_PARSE_ERROR));
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1662,7 +1667,6 @@ void comment_end_dash_state(parser * p) {
         case EOF:
             LOG_ERROR(xstr(EOF_IN_COMMENT_PARSE_ERROR));
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1686,9 +1690,9 @@ void comment_end_state(parser * p) {
             append_to_current_tag_token_comment_data(p, '-');
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_COMMENT_PARSE_ERROR));
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1714,9 +1718,9 @@ void comment_end_bang_state(parser * p) {
             emit_token(get_current_token(p));
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_COMMENT_PARSE_ERROR));
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1742,11 +1746,11 @@ void doctype_state(parser * p) {
             set_state(p, BEFORE_DOCTYPE_NAME_STATE);
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_COMMENT_PARSE_ERROR));
             set_current_token(p, token_doctype_init());
             set_doctype_token_force_quirks_flag(p, true);
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1779,11 +1783,11 @@ void before_doctype_name_state(parser * p) {
             emit_token(get_current_token(p));
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_current_token(p, token_doctype_init());
             set_doctype_token_force_quirks_flag(p, true);
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1817,10 +1821,10 @@ void doctype_name_state(parser * p) {
             append_to_current_tag_token_name(p, UNICODE_REPLACEMENT_CHAR);
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(p, true);
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1846,10 +1850,10 @@ void after_doctype_name_state(parser * p) {
             emit_token(get_current_token(p));
             return;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(p, true);
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             return;
     }
@@ -1911,10 +1915,10 @@ void after_doctype_public_keyword_state(parser * p) {
             emit_token(get_current_token(p));
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(p, true);
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1949,10 +1953,10 @@ void before_doctype_public_identifier_state(parser * p) {
             emit_token(get_current_token(p));
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(p, true);
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -1976,10 +1980,10 @@ void doctype_public_identifier_double_quoted_state(parser * p) {
             emit_token(get_current_token(p));
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(p, true);
             emit_token(get_current_token(p));
-            eof_token_emit();
             break;
         default:
             append_to_current_tag_token_identifier(p, c);
@@ -2003,10 +2007,10 @@ void doctype_public_identifier_single_quoted_state(parser * p) {
             emit_token(get_current_token(p));
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(p, true);
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -2038,10 +2042,10 @@ void after_doctype_public_identifier_state(parser * p) {
             set_state(p, DOCTYPE_SYSTEM_IDENTIFIER_SINGLE_QUOTED_STATE);
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(p, true);
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -2074,10 +2078,10 @@ void between_doctype_public_and_system_identifiers_state(parser * p) {
             set_state(p, DOCTYPE_SYSTEM_IDENTIFIER_SINGLE_QUOTED_STATE);
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(p, true);
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -2113,10 +2117,10 @@ void after_doctype_system_keyword_state(parser * p) {
             emit_token(get_current_token(p));
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(p, true);
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -2151,10 +2155,10 @@ void before_doctype_system_identifier_state(parser * p) {
             emit_token(get_current_token(p));
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(p, true);
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -2183,10 +2187,10 @@ void doctype_system_identifier_double_quoted_state(parser * p) {
             emit_token(get_current_token(p));
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(p, true);
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -2211,10 +2215,10 @@ void doctype_system_identifier_single_quoted_state(parser * p) {
             emit_token(get_current_token(p));
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_DOCTYPE_PARSE_ERROR));
             set_doctype_token_force_quirks_flag(p, true);
             emit_token(get_current_token(p));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:
@@ -2254,7 +2258,7 @@ void bogus_doctype_state(parser * p) {
             // intentionally ignore character
             break;
         case EOF:
-            eof_token_emit(); //logging
+            p->eof_emitted = true;
             emit_token(get_current_token(p));
             emit_token(token_eof_init());
             break;
@@ -2269,8 +2273,8 @@ void cdata_section_state(parser * p) {
             set_state(p, CDATA_SECTION_BRACKET_STATE);
             break;
         case EOF:
+            p->eof_emitted = true;
             LOG_ERROR(xstr(EOF_IN_CDATA_PARSE_ERROR));
-            eof_token_emit();
             emit_token(token_eof_init());
             break;
         default:

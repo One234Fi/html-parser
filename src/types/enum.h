@@ -1,0 +1,7 @@
+#ifndef ENUM_MODULE_H
+#define ENUM_MODULE_H
+
+#define DEFINE_ENUM(ENUM) ENUM,
+#define MAKE_ENUM_STRINGS(STRING) #STRING,
+
+#endif

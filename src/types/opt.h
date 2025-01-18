@@ -13,8 +13,9 @@ typedef struct {
 typedef opt opt_str;
 typedef opt opt_i32;
 
-#define opt_get(opt, type) ((type *) (opt->val))
+#define opt_get(opt, type) ((type *) ((opt)->val))
 
 void opt_str_append(opt_str* s, arena * a, char c);
+
 
 #endif

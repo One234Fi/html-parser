@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#define make_string(s) (string){(char*)s, sizeof(s)-1, 0}
+#define make_string(s) (string){(char*)s, strlen(s)-1, 0}
 
 typedef struct {
     char * data;

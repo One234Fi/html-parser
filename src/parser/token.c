@@ -38,48 +38,61 @@ token token_eof_init() {
 }
 
 char * tok_templs[] = {
-    "DOCTYPE %s\n",
-    "<%s>\n",
-    "</%s>\n",
-    "<!-- %s -->\n",
-    "%c\n",
+    "DOCTYPE %s",
+    "<%s>",
+    "</%s>",
+    "<!-- %s -->",
+    "%c",
     "EOF"
 };
 
 char * token_to_string(token t) {
     switch (t.type) {
         case DOCTYPE: {
-                size l = snprintf(NULL, 0, tok_templs[DOCTYPE], ((string *) t.doctype.name.val)->data);
-                char * buf = malloc(l);
-                sprintf(buf, tok_templs[DOCTYPE], t.doctype.name);
+                size l = snprintf(NULL, 0, tok_templs[DOCTYPE], 
+                        opt_get(&t.doctype.name, string)->data);
+                char * buf = malloc(l + 1);
+                sprintf(buf, tok_templs[DOCTYPE], 
+                        opt_get(&t.doctype.name, string)->data);
+                buf[l] = 0;
                 return buf;
             }
             break;
         case START_TAG: {
-                size l = snprintf(NULL, 0, tok_templs[START_TAG], ((string *) t.start_tag.name.val)->data);
-                char * buf = malloc(l);
-                sprintf(buf, tok_templs[START_TAG], t.start_tag.name);
+                size l = snprintf(NULL, 0, tok_templs[START_TAG], 
+                        opt_get(&t.start_tag.name, string)->data);
+                char * buf = malloc(l + 1);
+                buf[l] = 0;
+                sprintf(buf, tok_templs[START_TAG], 
+                        opt_get(&t.start_tag.name, string)->data);
                 return buf;
             }
             break;
 
         case END_TAG: {
-                size l = snprintf(NULL, 0, tok_templs[END_TAG], ((string *) t.end_tag.name.val)->data);
-                char * buf = malloc(l);
-                sprintf(buf, tok_templs[END_TAG], t.end_tag.name);
+                size l = snprintf(NULL, 0, tok_templs[END_TAG], 
+                        ((string *) t.end_tag.name.val)->data);
+                char * buf = malloc(l + 1);
+                buf[l] = 0;
+                sprintf(buf, tok_templs[END_TAG], 
+                        opt_get(&t.end_tag.name, string)->data);
                 return buf;
             } 
             break;
         case COMMENT: {
-                size l = snprintf(NULL, 0, tok_templs[COMMENT], t.comment.data);
-                char * buf = malloc(l);
-                sprintf(buf, tok_templs[END_TAG], t.comment.data);
+                size l = snprintf(NULL, 0, tok_templs[COMMENT], 
+                        t.comment.data.data);
+                char * buf = malloc(l + 1);
+                buf[l] = 0;
+                sprintf(buf, tok_templs[COMMENT], t.comment.data.data);
                 return buf;
             } 
             break;
         case CHARACTER: {
-                size l = snprintf(NULL, 0, tok_templs[CHARACTER], t.character.data);
-                char * buf = malloc(l);
+                size l = snprintf(NULL, 0, tok_templs[CHARACTER], 
+                        t.character.data);
+                char * buf = malloc(l + 1);
+                buf[l] = 0;
                 sprintf(buf, tok_templs[CHARACTER], t.character.data);
                 return buf;
             }  
