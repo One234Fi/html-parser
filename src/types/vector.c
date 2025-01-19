@@ -1,4 +1,4 @@
-#include "types/arena.h"
+#include "mem/arena.h"
 #include "types/types.h"
 #include <assert.h>
 #include <string.h>

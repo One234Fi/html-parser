@@ -7,8 +7,8 @@
  */
 
 #include "input.h"
+#include "mem/arena.h"
 #include "parser/token.h"
-#include "types/arena.h"
 #include "types/enum.h"
 
 #define DEFINE_STATE_TYPES(S) \

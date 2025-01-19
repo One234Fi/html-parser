@@ -3,7 +3,8 @@
  */
 
 #include "tokenizer.h"
-#include "types/arena.h"
+#include "mem/arena.h"
+#include "mem/scratch_arena.h"
 #include "types/opt.h"
 #include "types/str.h"
 #include "types/types.h"
@@ -1486,13 +1487,15 @@ void bogus_comment_state(parser * p) {
 }
 
 void markup_declaration_open_state(parser * p) {
-    string buf = input_system_peekn(&p->input, 7, p->arena);
+    scratch_arena * s = scratch_arena_get();
+    string buf = input_system_peekn(&p->input, 7, &s->a);
 
     if (buf.data[0] == '-' && buf.data[1] == '-') {
         input_system_consume(&p->input);
         input_system_consume(&p->input);
         set_current_token(p, token_comment_init());
         set_state(p, COMMENT_START_STATE);
+        scratch_arena_release(s);
         return;
     } 
 
@@ -1516,6 +1519,7 @@ void markup_declaration_open_state(parser * p) {
                 append_to_current_tag_token_comment_data(p, '[');
                 set_state(p, BOGUS_COMMENT_STATE);
             }
+            scratch_arena_release(s);
             return;
         }
 
@@ -1528,6 +1532,7 @@ void markup_declaration_open_state(parser * p) {
                 input_system_consume(&p->input);
             }
             set_state(p, DOCTYPE_STATE);
+            scratch_arena_release(s);
             return;
         }
     }
@@ -1535,6 +1540,7 @@ void markup_declaration_open_state(parser * p) {
     LOG_ERROR(xstr(INCORRECTLY_OPENED_COMMENT_PARSE_ERROR));
     set_current_token(p, token_comment_init());
     set_state(p, BOGUS_COMMENT_STATE);
+    scratch_arena_release(s);
 }
 
 void comment_start_state(parser * p) {

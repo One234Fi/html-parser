@@ -11,13 +11,14 @@
 #define new2(a, t)                  (t *)alloc(a, sizeof(t), _Alignof(t), 1)
 #define new3(a, t, n)               (t *)alloc(a, sizeof(t), _Alignof(t), n)
 
+typedef struct arena arena;
 struct arena {
     char * beg;
     char * end;
 };
-typedef struct arena arena;
 
 arena arena_init(ptrdiff_t cap);
 void * alloc(arena * a, size stride, size align, size count);
+
 
 #endif
