@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "parser/token.h"
+#include "types/vector.h"
 #include "common.h"
 
 token token_init(token_type type) {
@@ -49,6 +50,7 @@ char * tok_templs[] = {
 char * token_to_string(token t, arena * a) {
     switch (t.type) {
         case DOCTYPE: {
+                *push(opt_get(&t.doctype.name, string), a) = '\0';
                 size l = snprintf(NULL, 0, tok_templs[DOCTYPE], 
                         opt_get(&t.doctype.name, string)->data);
                 char * buf = new(a, char, l + 1);
@@ -58,7 +60,9 @@ char * token_to_string(token t, arena * a) {
                 return buf;
             }
             break;
+
         case START_TAG: {
+                *push(opt_get(&t.start_tag.name, string), a) = '\0';
                 size l = snprintf(NULL, 0, tok_templs[START_TAG], 
                         opt_get(&t.start_tag.name, string)->data);
                 char * buf = new(a, char, l + 1);
@@ -70,6 +74,7 @@ char * token_to_string(token t, arena * a) {
             break;
 
         case END_TAG: {
+                *push(opt_get(&t.end_tag.name, string), a) = '\0';
                 size l = snprintf(NULL, 0, tok_templs[END_TAG], 
                         ((string *) t.end_tag.name.val)->data);
                 char * buf = new(a, char, l + 1);
@@ -80,6 +85,7 @@ char * token_to_string(token t, arena * a) {
             } 
             break;
         case COMMENT: {
+                *push(&t.comment.data, a) = '\0';
                 size l = snprintf(NULL, 0, tok_templs[COMMENT], 
                         t.comment.data.data);
                 char * buf = new(a, char, l + 1);
