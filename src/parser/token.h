@@ -78,7 +78,7 @@ token token_end_tag_init();
 token token_comment_init();
 token token_character_init(char c);
 token token_eof_init();
-char * token_to_string(token t, arena * a);
+string token_to_string(token t, arena * a);
 
 bool emit_token(token t);
 

@@ -47,70 +47,54 @@ char * tok_templs[] = {
     "EOF"
 };
 
-char * token_to_string(token t, arena * a) {
+string token_to_string(token t, arena * a) {
     switch (t.type) {
         case DOCTYPE: {
-                *push(opt_get(&t.doctype.name, string), a) = '\0';
-                size l = snprintf(NULL, 0, tok_templs[DOCTYPE], 
-                        opt_get(&t.doctype.name, string)->data);
-                char * buf = new(a, char, l + 1);
-                sprintf(buf, tok_templs[DOCTYPE], 
-                        opt_get(&t.doctype.name, string)->data);
-                buf[l] = 0;
-                return buf;
+                string ret = make_string("DOCTYPE \"");
+                ret = s_cat(ret, *opt_get(&t.doctype.name, string), a);
+                ret = s_cat(ret, make_string("\""), a);
+                return ret;
             }
             break;
 
         case START_TAG: {
-                *push(opt_get(&t.start_tag.name, string), a) = '\0';
-                size l = snprintf(NULL, 0, tok_templs[START_TAG], 
-                        opt_get(&t.start_tag.name, string)->data);
-                char * buf = new(a, char, l + 1);
-                buf[l] = 0;
-                sprintf(buf, tok_templs[START_TAG], 
-                        opt_get(&t.start_tag.name, string)->data);
-                return buf;
+                string ret = make_string("<");
+                ret = s_cat(ret, *opt_get(&t.start_tag.name, string), a);
+                ret = s_cat(ret, make_string(">"), a);
+                return ret;
             }
             break;
 
         case END_TAG: {
-                *push(opt_get(&t.end_tag.name, string), a) = '\0';
-                size l = snprintf(NULL, 0, tok_templs[END_TAG], 
-                        ((string *) t.end_tag.name.val)->data);
-                char * buf = new(a, char, l + 1);
-                buf[l] = 0;
-                sprintf(buf, tok_templs[END_TAG], 
-                        opt_get(&t.end_tag.name, string)->data);
-                return buf;
+                string ret = make_string("</");
+                ret = s_cat(ret, *opt_get(&t.end_tag.name, string), a);
+                ret = s_cat(ret, make_string(">"), a);
+                return ret;
             } 
             break;
+
         case COMMENT: {
-                *push(&t.comment.data, a) = '\0';
-                size l = snprintf(NULL, 0, tok_templs[COMMENT], 
-                        t.comment.data.data);
-                char * buf = new(a, char, l + 1);
-                buf[l] = 0;
-                sprintf(buf, tok_templs[COMMENT], t.comment.data.data);
-                return buf;
+                string ret = make_string("<!-- ");
+                ret = s_cat(ret, t.comment.data, a);
+                ret = s_cat(ret, make_string(" -->"), a);
+                return ret;
             } 
             break;
+
         case CHARACTER: {
-                size l = snprintf(NULL, 0, tok_templs[CHARACTER], 
-                        t.character.data);
-                char * buf = new(a, char, l + 1);
-                buf[l] = 0;
-                sprintf(buf, tok_templs[CHARACTER], t.character.data);
-                return buf;
+                string ret = {0};
+                *push(&ret, a) = t.character.data;
+                return ret;
             }  
             break;
+
         case END_OF_FILE: {
-                char * out = new(a, char, sizeof("EOF"));
-                memcpy(out, "EOF", sizeof("EOF"));
-                return out; 
+                return s_clone(make_string("EOF\n"), a); 
             }
+
         default:
-            return NULL;
+            return make_string("");
     }
 
-    return NULL;
+    return make_string("");
 }

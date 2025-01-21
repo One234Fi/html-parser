@@ -19,9 +19,9 @@ void scratch_space_init() {
 
 void scratch_space_destroy() {
     for (scratch_arena * n = global.free_head; n != NULL; n = n->next) {
-        xfree(n->pos);
+        //xfree(n->pos);
     }
-    xfree(global.tbf);
+    //xfree(global.tbf);
 }
 
 scratch_arena * scratch_arena_get() { 

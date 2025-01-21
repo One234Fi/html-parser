@@ -86,7 +86,7 @@ bool current_token_is_valid(parser * p) {
             && p->current_token.end_tag.name.exists) {
         string start_tag = * (string *) p->last_start_tag_name.val;
         string end_tag = * (string *) p->current_token.end_tag.name.val;
-        return string_equal(start_tag, end_tag);
+        return s_equal(start_tag, end_tag);
     }
     return false;
 }
@@ -146,7 +146,7 @@ void check_for_duplicate_attributes(parser * p) {
 
     string new_attr = list.data[list.len-1].name;
     for (size i = 0; i < p->current_token.start_tag.attributes.len-1; i++) {
-        if (string_equal(new_attr, list.data[i].name)) {
+        if (s_equal(new_attr, list.data[i].name)) {
             LOG_ERROR(xstr(DUPLICATE_ATTRIBUTE_PARSE_ERROR));
             if (p->current_token.type == START_TAG) {
                 p->current_token.start_tag.attributes.len--;
