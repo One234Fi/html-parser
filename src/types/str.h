@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <stddef.h>
 
-#define make_string(s) (string){(char*)s, sizeof(s)-1, 0}
+#define String(s) (string){(char*)s, sizeof(s)-1, 0}
 
 typedef struct {
     char * data;
@@ -15,6 +15,9 @@ typedef struct {
 } string;
 
 bool s_equal(string a, string b);
+bool s_equal_ignore_case(string a, string b, arena scratch);
+string s_to_lower(string a);
+string s_to_upper(string a);
 string s_clone(string s, arena * a);
 string s_cat(string a, string b, arena * perm);
 
