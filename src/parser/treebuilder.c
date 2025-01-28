@@ -1,8 +1,11 @@
+#include "mem/scratch_arena.h"
 #include "parser/token.h"
 #include "tokenizer.h"
 #include "node_stack.h"
 #include "node_types.h"
 #include "common.h"
+#include "types/opt.h"
+#include "types/str.h"
 #include <ctype.h>
 #include <stdbool.h>
 #include <string.h>
@@ -57,29 +60,30 @@ void tree_construction_phase(token input) {
 }
 
 void tree_construction_dispatcher(token input) {
-//    node n = get_adjusted_current_node();
-//    if ((node_stack_is_empty(state.open_elements_stack))
-//        || (in_html_namespace(n)) 
-//        || (is_mathml_text_integration_point(n)
-//            && input.type == START_TAG
-//            && (strncmp(input.start_tag.name.string.data, "mglyph", strlen("mglyph")) != 0)
-//            && (strncmp(input.start_tag.name.string.data, "malignmark", strlen("malignmark")) != 0)) 
-//        || (is_mathml_text_integration_point(n)
-//            && input.type == CHARACTER) 
-//        || (is_mathml_annotation_xml_element(n)
-//            && input.type == START_TAG
-//            && (strncmp(input.start_tag.name.string.data, "svg", strlen("svg")) == 0)) 
-//        || (is_html_integration_point(n)
-//            && input.type == START_TAG) 
-//        || (is_html_integration_point(n)
-//            && input.type == CHARACTER)
-//        || (input.type == END_OF_FILE)) {
-//
-//        //insertion mode processing
-//        //process();
-//    } else {
-//        //foreign content processing
-//    }
+    node n = get_adjusted_current_node();
+    string start_tag_name = *opt_unwrap(&input.start_tag.name, string, &String(""));
+    if ((node_stack_is_empty(state.open_elements_stack))
+        || (in_html_namespace(n))
+        || (is_mathml_text_integration_point(n)
+            && input.type == START_TAG
+            && (!s_equal(start_tag_name, String("mglyph")))
+            && (!s_equal(start_tag_name, String("malignmark"))))
+        || (is_mathml_text_integration_point(n)
+            && input.type == CHARACTER)
+        || (is_mathml_annotation_xml_element(n)
+            && input.type == START_TAG
+            && (s_equal(start_tag_name, String("svg"))))
+        || (is_html_integration_point(n)
+            && input.type == START_TAG) 
+        || (is_html_integration_point(n)
+            && input.type == CHARACTER)
+        || (input.type == END_OF_FILE)) {
+
+        //insertion mode processing
+        //process();
+    } else {
+        //foreign content processing
+    }
 }
 
 node get_current_node() {
@@ -92,43 +96,18 @@ node get_adjusted_current_node() {
     return node_stack_peek(state.open_elements_stack);
 }
 
-//TODO: put this somewhere else
-bool compare_str_ignore_case(const char* a, const size_t n1, const char* b, const size_t n2) {
-    char t1[n1] = {};
-    for (size_t i = 0; i < n1; i++) {
-        t1[i] = (char) tolower(a[i]);
-    }
-
-    char t2[n2] = {};
-    for (size_t i = 0; i < n2; i++) {
-        t2[i] = (char) tolower(b[i]);
-    }
-
-    size_t l = n2;
-    if (n1 < n2) {
-        l = n1;
-    }
-    return strncmp(a, b, l) == 0;
-}
-
 
 bool is_html_integration_point(node n) {
+    scratch_arena * s = scratch_arena_get();
     if (n.type == MATHML_ANNOTATION_XML_ELEMENT 
             && has_attribute(n, ATTRIBUTE_ENCODING)
-            && (compare_str_ignore_case(
-                    n.name.data, 
-                    n.name.len, 
-                    "text/html", 
-                    strlen("text/html"))
-                || 
-                compare_str_ignore_case(
-                    n.name.data, 
-                    n.name.len, 
-                    "application/xhtml+xml", 
-                    strlen("application/xhtml+xml")))) {
+            && (s_equal_ignore_case(n.name, String("text/html"), s->a) || 
+                s_equal_ignore_case(n.name, String("application/xhtml+xml"), s->a))) {
+        scratch_arena_release(s);
         return true;
     }
 
+    scratch_arena_release(s);
     return n.type == SVG_FOREIGN_OBJECT_ELEMENT
         || n.type == SVG_DESC_ELEMENT
         || n.type == SVG_TITLE_ELEMENT;
@@ -160,78 +139,140 @@ typedef enum insertion_mode {
     AFTER_AFTER_FRAMESET
 } insertion_mode;
 
+
+void insertion_mode_initial(parser * p, token t); 
+void before_html(parser * p, token t);
+void before_head(parser * p, token t);
+void in_head(parser * p, token t);
+void in_head_noscript(parser * p, token t);
+void after_head(parser * p, token t);
+void in_body(parser * p, token t);
+void text(parser * p, token t);
+void in_table(parser * p, token t);
+void in_table_text(parser * p, token t); 
+void in_caption(parser * p, token t); 
+void in_column_group(parser * p, token t);
+void in_table_body(parser * p, token t);
+void in_row(parser * p, token t);
+void in_cell(parser * p, token t);
+void in_select(parser * p, token t);
+void in_select_in_table(parser * p, token t);
+void in_template(parser * p, token t);
+void after_body(parser * p, token t);
+void in_frameset(parser * p, token t);
+void after_frameset(parser * p, token t);
+void after_after_body(parser * p, token t);
+void after_after_frameset(parser * p, token t);
+
 void process(parser * p, token t) {
-    switch (p->insertion_mode) {
-        case INSERTION_MODE_INITIAL: 
-            {
-                switch (t.type) {
-                    case CHARACTER: 
-                        {
-                            if (t.character.data == '\t' ||
-                                t.character.data == '\n' ||
-                                t.character.data == '\f' ||
-                                t.character.data == '\r' ||
-                                t.character.data == ' ') {
-                                //ignore
-                                break;
-                            }
-                            //if not an iframe srcdoc doc, then parse error
-                            p->insertion_mode = INSERTION_MODE_BEFORE_HTML;
-                            process(p, t); //reprocess
-                        }
-                        break;
-                    case COMMENT:
-                        {
-                            //TODO: append a comment to doc node
-                        }
-                        break;
-                    case DOCTYPE:
-                        {
-                            if (!t.doctype.name.exists ||
-//                                    !string_equal(t.doctype.name.string, make_string("html")) ||
-                                    t.doctype.public_id.exists) {
-                                //parse_error
-                            }
-                            //append a doctype node to doc node
-                            //  name: t.name : ""
-                            //  public_id: t.public_id : ""
-                            //  system_id: t.system_id: ""
-                            //
-                            //  then handle quicks mode check
-                            p->insertion_mode = INSERTION_MODE_BEFORE_HTML;
-                            break;
-                        }
-                        break;
-                    default:
-                        //if not an iframe srcdoc doc, then parse error
-                        p->insertion_mode = INSERTION_MODE_BEFORE_HTML;
-                        process(p, t); //reprocess
-                }
-            }
-            break;
-        case BEFORE_HTML: break;
-        case BEFORE_HEAD: break;
-        case IN_HEAD: break;
-        case IN_HEAD_NOSCRIPT: break;
-        case AFTER_HEAD: break;
-        case IN_BODY: break;
-        case TEXT: break;
-        case IN_TABLE: break;
-        case IN_TABLE_TEXT: break; 
-        case IN_CAPTION: break; 
-        case IN_COLUMN_GROUP: break;
-        case IN_TABLE_BODY: break;
-        case IN_ROW: break;
-        case IN_CELL: break;
-        case IN_SELECT: break;
-        case IN_SELECT_IN_TABLE: break;
-        case IN_TEMPLATE: break;
-        case AFTER_BODY: break;
-        case IN_FRAMESET: break;
-        case AFTER_FRAMESET: break;
-        case AFTER_AFTER_BODY: break;
-        case AFTER_AFTER_FRAMESET: break;
+    switch (p->insert_mode) {
+        case INSERTION_MODE_INITIAL: insertion_mode_initial(p, t); break;
+        case BEFORE_HTML: before_html(p, t); break;
+        case BEFORE_HEAD: before_head(p, t); break;
+        case IN_HEAD: in_head(p, t); break;
+        case IN_HEAD_NOSCRIPT: in_head_noscript(p, t); break;
+        case AFTER_HEAD: after_head(p, t); break;
+        case IN_BODY: in_body(p, t); break;
+        case TEXT: text(p,t); break;
+        case IN_TABLE: in_table(p, t); break;
+        case IN_TABLE_TEXT: in_table_text(p, t); break; 
+        case IN_CAPTION: in_caption(p, t); break; 
+        case IN_COLUMN_GROUP: in_column_group(p, t); break;
+        case IN_TABLE_BODY: in_table_body(p, t); break;
+        case IN_ROW: in_row(p, t); break;
+        case IN_CELL: in_cell(p, t); break;
+        case IN_SELECT: in_select(p, t); break;
+        case IN_SELECT_IN_TABLE: in_select_in_table(p, t); break;
+        case IN_TEMPLATE: in_template(p, t); break;
+        case AFTER_BODY: after_body(p, t); break;
+        case IN_FRAMESET: in_frameset(p, t); break;
+        case AFTER_FRAMESET: after_frameset(p, t); break;
+        case AFTER_AFTER_BODY: after_after_body(p, t); break;
+        case AFTER_AFTER_FRAMESET: after_after_frameset(p, t); break;
         default:
             LOG_ERROR("Invalid insertion mode type!");
     }
 }
+
+void insertion_mode_initial(parser * p, token t) {
+    switch (t.type) {
+        case CHARACTER: 
+            {
+                if (t.character.data == '\t' ||
+                        t.character.data == '\n' ||
+                        t.character.data == '\f' ||
+                        t.character.data == '\r' ||
+                        t.character.data == ' ') {
+                    //ignore
+                    break;
+                }
+                //if not an iframe srcdoc doc, then parse error
+                p->insert_mode = INSERTION_MODE_BEFORE_HTML;
+                process(p, t); //reprocess
+            }
+            break;
+        case COMMENT:
+            {
+                //TODO: append a comment to doc node
+            }
+            break;
+        case DOCTYPE:
+            {
+                if (!t.doctype.name.exists ||
+                        !s_equal(*opt_unwrap(&t.doctype.name, string, &String("")), String("html")) ||
+                        t.doctype.public_id.exists) {
+                    //parse_error
+                }
+                //append a doctype node to doc node
+                //  name: t.name : ""
+                //  public_id: t.public_id : ""
+                //  system_id: t.system_id: ""
+                //
+                //  then handle quircks mode check
+                p->insert_mode = INSERTION_MODE_BEFORE_HTML;
+                break;
+            }
+            break;
+        default:
+            //if not an iframe srcdoc doc, then parse error
+            p->insert_mode = INSERTION_MODE_BEFORE_HTML;
+            process(p, t); //reprocess
+    }
+}
+
+void before_html(parser * p, token t) {
+    switch (t.type) {
+        case DOCTYPE: 
+            {
+                //Parse error, ignore
+            }
+            break;
+        case COMMENT:
+            {
+
+            }
+            break;
+    }
+}
+
+void before_head(parser * p, token t);
+void in_head(parser * p, token t);
+void in_head_noscript(parser * p, token t);
+void after_head(parser * p, token t);
+void in_body(parser * p, token t);
+void text(parser * p, token t);
+void in_table(parser * p, token t);
+void in_table_text(parser * p, token t); 
+void in_caption(parser * p, token t); 
+void in_column_group(parser * p, token t);
+void in_table_body(parser * p, token t);
+void in_row(parser * p, token t);
+void in_cell(parser * p, token t);
+void in_select(parser * p, token t);
+void in_select_in_table(parser * p, token t);
+void in_template(parser * p, token t);
+void after_body(parser * p, token t);
+void in_frameset(parser * p, token t);
+void after_frameset(parser * p, token t);
+void after_after_body(parser * p, token t);
+void after_after_frameset(parser * p, token t);

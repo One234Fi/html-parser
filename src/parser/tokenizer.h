@@ -131,7 +131,7 @@ struct parser {
     token current_token;
     enum TOKENIZER_STATE_TYPE state;
     enum TOKENIZER_STATE_TYPE return_state;
-    enum INSERTION_MODE_TYPE insertion_mode;
+    enum INSERTION_MODE_TYPE insert_mode;
     bool parser_pause_flag;
     bool eof_emitted;
     opt_str last_start_tag_name;
