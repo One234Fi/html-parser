@@ -18,8 +18,6 @@
 #define str(x) #x
 #define xstr(x) str(x)
 
-#define container_of(ptr, type, member) ((type *)((char *)(ptr) - offsetof(type, member)))
-
 #define die(message) LOG_ERROR(message); exit(EXIT_FAILURE)
 
 #endif

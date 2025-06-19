@@ -4,8 +4,8 @@
  * functions to handle reading input from files
  */
 
-#include "mem/arena.h"
-#include "types/str.h"
+#include "arena.h"
+#include "str.h"
 #include <stddef.h>
 #include <stdbool.h>
 

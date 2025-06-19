@@ -1,7 +1,7 @@
-#include "types/opt.h"
-#include "types/str.h"
-#include "mem/arena.h"
-#include "types/vector.h"
+#include "opt.h"
+#include "str.h"
+#include "arena.h"
+#include "vector.h"
 
 void opt_str_append(opt_str* s, arena * a, char c) {
     if(!s->exists) {

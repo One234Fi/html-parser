@@ -1,7 +1,7 @@
 #ifndef OPTION_MODULE_H
 #define OPTION_MODULE_H
 
-#include "mem/arena.h"
+#include "arena.h"
 #include <stdbool.h>
 #include <stddef.h>
 

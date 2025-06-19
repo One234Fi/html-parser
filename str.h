@@ -1,8 +1,8 @@
 #ifndef STRING_MODULE_H
 #define STRING_MODULE_H
 
-#include "mem/arena.h"
-#include "types/types.h"
+#include "arena.h"
+#include "types.h"
 #include <stdbool.h>
 #include <stddef.h>
 
@@ -15,9 +15,7 @@ typedef struct {
 } string;
 
 bool s_equal(string a, string b);
-bool s_equal_ignore_case(string a, string b, arena scratch);
-string s_to_lower(string a);
-string s_to_upper(string a);
+bool s_equal_ignore_case(string a, string b);
 string s_clone(string s, arena * a);
 string s_cat(string a, string b, arena * perm);
 

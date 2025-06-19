@@ -7,9 +7,9 @@
  */
 
 #include "input.h"
-#include "mem/arena.h"
-#include "parser/token.h"
-#include "types/enum.h"
+#include "arena.h"
+#include "token.h"
+#include "enum.h"
 
 #define DEFINE_STATE_TYPES(S) \
     S(DATA_STATE) \
@@ -98,7 +98,7 @@ enum TOKENIZER_STATE_TYPE {
     DEFINE_STATE_TYPES(DEFINE_ENUM)
 };
 
-extern const char * TOKENIZER_STATE_STRINGS[];
+extern const char * TOKENIZER_STATE_STRINGS[INVALID_TOKENIZER_STATE + 1]; 
 
 enum INSERTION_MODE_TYPE {
     INSERTION_MODE_INITIAL,
@@ -126,9 +126,16 @@ enum INSERTION_MODE_TYPE {
     INSERTION_MODE_AFTER_AFTER_FRAMESET,
 };
 
+typedef struct {
+    token * data;
+    size len;
+    size cap;
+} tokens;
+
 typedef struct parser parser;
 struct parser {
     token current_token;
+    tokens emitted_tokens;
     enum TOKENIZER_STATE_TYPE state;
     enum TOKENIZER_STATE_TYPE return_state;
     enum INSERTION_MODE_TYPE insert_mode;
@@ -142,6 +149,7 @@ struct parser {
 };
 
 void execute(parser * p);
-parser parser_init(arena * a, input_system i);
+token get_token(parser * p);
+parser parser_init(const char* filename, arena * a);
 
 #endif

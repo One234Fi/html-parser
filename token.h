@@ -1,9 +1,9 @@
 #ifndef TOKEN_MODULE_H
 #define TOKEN_MODULE_H
 
-#include "types/opt.h"
-#include "types/str.h"
-#include "types/types.h"
+#include "opt.h"
+#include "str.h"
+#include "types.h"
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
@@ -79,7 +79,5 @@ token token_comment_init();
 token token_character_init(char c);
 token token_eof_init();
 string token_to_string(token t, arena * a);
-
-bool emit_token(token t);
 
 #endif

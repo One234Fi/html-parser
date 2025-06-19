@@ -2,7 +2,7 @@
  * functions to handle reading input from files
  */
 
-#include "mem/arena.h"
+#include "arena.h"
 #include "common.h"
 #include <assert.h>
 #include <stddef.h>

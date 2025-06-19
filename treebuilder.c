@@ -1,15 +1,46 @@
-#include "mem/scratch_arena.h"
-#include "parser/token.h"
+#include "token.h"
 #include "tokenizer.h"
-#include "node_stack.h"
-#include "node_types.h"
 #include "common.h"
-#include "types/opt.h"
-#include "types/str.h"
-#include <ctype.h>
+#include "opt.h"
+#include "str.h"
+#include "types.h"
 #include <stdbool.h>
-#include <string.h>
 
+
+typedef enum NODE_TYPES {
+    MATHML_MI_ELEMENT,
+    MATHML_MO_ELEMENT,
+    MATHML_MN_ELEMENT,
+    MATHML_MS_ELEMENT,
+    MATHML_MTEXT_ELEMENT,
+    MATHML_ANNOTATION_XML_ELEMENT,
+    SVG_FOREIGN_OBJECT_ELEMENT,
+    SVG_DESC_ELEMENT,
+    SVG_TITLE_ELEMENT,
+} NODE_TYPES;
+
+#define is_mathml_text_integration_point(node) \
+        (node.type == MATHML_MI_ELEMENT \
+        || node.type == MATHML_MO_ELEMENT \
+        || node.type == MATHML_MN_ELEMENT \
+        || node.type == MATHML_MS_ELEMENT \
+        || node.type == MATHML_MTEXT_ELEMENT)
+
+typedef struct node node;
+typedef struct nodes nodes;
+
+struct nodes {
+    node * data;
+    size len;
+    size cap;
+};
+
+struct node {
+    NODE_TYPES type;
+    string name;
+    node * parent;
+    nodes children;
+};
 
 
 void tree_construction_phase(token input);
@@ -43,7 +74,7 @@ bool is_mathml_annotation_xml_element(node n) {
 }
 
 typedef struct tree_construction_state {
-    node_stack* open_elements_stack;
+    nodes open_elements_stack;
     enum INSERTION_MODE_TYPE insertion_mode;
 } tree_construction_state;
 
@@ -62,7 +93,7 @@ void tree_construction_phase(token input) {
 void tree_construction_dispatcher(token input) {
     node n = get_adjusted_current_node();
     string start_tag_name = *opt_unwrap(&input.start_tag.name, string, &String(""));
-    if ((node_stack_is_empty(state.open_elements_stack))
+    if (state.open_elements_stack.len <= 0
         || (in_html_namespace(n))
         || (is_mathml_text_integration_point(n)
             && input.type == START_TAG
@@ -87,27 +118,25 @@ void tree_construction_dispatcher(token input) {
 }
 
 node get_current_node() {
-    return node_stack_peek(state.open_elements_stack);
+    return state.open_elements_stack.data[state.open_elements_stack.len-1];
 }
 
 node get_adjusted_current_node() { 
     //only return the current node because the
     //fragment parsing alg is not implemented 
-    return node_stack_peek(state.open_elements_stack);
+    return get_current_node();
 }
 
 
+
 bool is_html_integration_point(node n) {
-    scratch_arena * s = scratch_arena_get();
     if (n.type == MATHML_ANNOTATION_XML_ELEMENT 
             && has_attribute(n, ATTRIBUTE_ENCODING)
-            && (s_equal_ignore_case(n.name, String("text/html"), s->a) || 
-                s_equal_ignore_case(n.name, String("application/xhtml+xml"), s->a))) {
-        scratch_arena_release(s);
+            && (s_equal_ignore_case(n.name, String("text/html")) || 
+                s_equal_ignore_case(n.name, String("application/xhtml+xml")))) {
         return true;
     }
 
-    scratch_arena_release(s);
     return n.type == SVG_FOREIGN_OBJECT_ELEMENT
         || n.type == SVG_DESC_ELEMENT
         || n.type == SVG_TITLE_ELEMENT;
@@ -249,30 +278,44 @@ void before_html(parser * p, token t) {
             break;
         case COMMENT:
             {
-
+                //insert a comment
             }
             break;
+        case CHARACTER:
+            {
+                if (t.character.data == '\t' ||
+                    t.character.data == '\n' ||
+                    t.character.data == '\f' ||
+                    t.character.data == '\r' ||
+                    t.character.data == ' ') {
+                    //ignore
+                    break;
+                }
+            }
+        case START_TAG:
+            {
+            }
     }
 }
 
-void before_head(parser * p, token t);
-void in_head(parser * p, token t);
-void in_head_noscript(parser * p, token t);
-void after_head(parser * p, token t);
-void in_body(parser * p, token t);
-void text(parser * p, token t);
-void in_table(parser * p, token t);
-void in_table_text(parser * p, token t); 
-void in_caption(parser * p, token t); 
-void in_column_group(parser * p, token t);
-void in_table_body(parser * p, token t);
-void in_row(parser * p, token t);
-void in_cell(parser * p, token t);
-void in_select(parser * p, token t);
-void in_select_in_table(parser * p, token t);
-void in_template(parser * p, token t);
-void after_body(parser * p, token t);
-void in_frameset(parser * p, token t);
-void after_frameset(parser * p, token t);
-void after_after_body(parser * p, token t);
-void after_after_frameset(parser * p, token t);
+void before_head(parser * p, token t) {}
+void in_head(parser * p, token t) {}
+void in_head_noscript(parser * p, token t) {}
+void after_head(parser * p, token t) {}
+void in_body(parser * p, token t) {}
+void text(parser * p, token t) {}
+void in_table(parser * p, token t) {}
+void in_table_text(parser * p, token t) {} 
+void in_caption(parser * p, token t) {} 
+void in_column_group(parser * p, token t) {}
+void in_table_body(parser * p, token t) {}
+void in_row(parser * p, token t) {}
+void in_cell(parser * p, token t) {}
+void in_select(parser * p, token t) {}
+void in_select_in_table(parser * p, token t) {}
+void in_template(parser * p, token t) {}
+void after_body(parser * p, token t) {}
+void in_frameset(parser * p, token t) {}
+void after_frameset(parser * p, token t) {}
+void after_after_body(parser * p, token t) {}
+void after_after_frameset(parser * p, token t) {}
