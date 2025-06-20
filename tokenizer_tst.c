@@ -3,18 +3,9 @@
 #include "tokenizer.h"
 #include <stdio.h>
 
-#include "arena.c"
-#include "token.c"
-#include "tokenizer.c"
-#include "input.c"
-#include "str.c"
-#include "vector.c"
-#include "tokenizer_state_strings.c"
-#include "opt.c"
-
 int main() {
     arena a = arena_init(2<<14);
-    arena scratch = arena_init(2<<7);
+    arena scratch = arena_init(2<<8);
     parser p = parser_init("testdata/short.html", &a);
 
     while (!p.eof_emitted) {

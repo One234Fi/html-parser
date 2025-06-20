@@ -8,11 +8,13 @@ LDFLAGS := -fsanitize=undefined -fsanitize-recover=undefined
 
 TARGET_EXEC := a.out
 
-SRCS := $(shell find -name '*.c' -not -name '*_tst.c')
+SRCS := $(shell find -name '*.c' -not -name '*_tst.c' -not -name 'main.c')
 OBJS := $(SRCS:.c=.o)
 DEPS := $(OBJS:.o=.d)
 
 TEST_SRCS := $(shell find  -name '*_tst.c')
+TEST_OBJS := $(TEST_SRCS:.c=.o)
+TEST_DEPS := $(TEST_OBJS:.o=.d)
 TEST_EXECS := $(TEST_SRCS:.c=.out)
 
 ifeq ($(asan), 1)
@@ -21,18 +23,15 @@ LDFLAGS += -fsanitize=address -fsanitize-recover=address
 endif
 
 
-$(TARGET_EXEC): $(OBJS)
-	$(CC) $(OBJS) -o $@ $(LDLIBS) $(LDFLAGS)
-
+$(TARGET_EXEC): main.o $(OBJS)
+	$(CC) main.o $(OBJS) -o $@ $(LDLIBS) $(LDFLAGS)
 
 %.o: %.c
 	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-
-%_tst.out: %_tst.c
-	$(CC) $(CFLAGS) $< -o $@
-
+%_tst.out: %_tst.o $(OBJS)
+	$(CC) $< $(OBJS) -o $@ $(LDLIBS) $(LDFLAGS)
 
 .PHONY: clean tests
 clean:
@@ -41,3 +40,4 @@ clean:
 tests: $(TEST_EXECS)
 
 -include $(DEPS)
+-include $(TEST_DEPS)

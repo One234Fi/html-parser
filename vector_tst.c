@@ -1,9 +1,7 @@
+#include <stdio.h>
 #include "arena.h"
 #include "types.h"
 #include "vector.h"
-
-#include "arena.c"
-#include "vector.c"
 
 struct i32s {
     i32 * data;

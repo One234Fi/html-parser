@@ -57,6 +57,13 @@ string token_to_string(token t, arena * a) {
         case START_TAG: {
                 string ret = String("<");
                 ret = s_cat(ret, *opt_get(&t.start_tag.name, string), a);
+                for (size i = 0; i < t.start_tag.attributes.len; i++) {
+                    ret = s_cat(ret, String(" "), a);
+                    ret = s_cat(ret, t.start_tag.attributes.data[i].name, a);
+                    ret = s_cat(ret, String("=\""), a);
+                    ret = s_cat(ret, t.start_tag.attributes.data[i].value, a);
+                    ret = s_cat(ret, String("\""), a);
+                }
                 ret = s_cat(ret, String(">"), a);
                 return ret;
             }
