@@ -24,5 +24,17 @@ int main() {
     for (size i = 0; i < test_vec.len; i++) {
         assert(test_vec.data[i] == i && "VECTOR: The items should be in reverse order");
     }
+    printf("VECTOR: Queuing works\n");
+
+    pop_front(&test_vec);
+
+    for (size i = 0; i < test_vec.len; i++) {
+        assert(test_vec.data[i] == i && "VECTOR: The items should be in reverse order");
+        printf("%d\n", test_vec.data[i]);
+    }
+    assert(test_vec.len == 5 && "VECTOR: one item should be popped");
+    assert(test_vec.data[0] == 4 && "VECTOR: first item should be 4");
+
+
     printf("VECTOR: All vector tests passed\n");
 }
