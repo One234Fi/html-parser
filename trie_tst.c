@@ -5,7 +5,7 @@
 
 int main() {
     trie t = {0};
-    arena a = arena_init(0x200000);
+    arena a = arena_init(4096);
     trie_prepare(&t, String("hello world"), &a);
     trie_prepare(&t, String("here's another string"), &a);
     trie_prepare(&t, String("different string"), &a);

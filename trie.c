@@ -1,31 +1,45 @@
 #include "trie.h"
 #include "vector.h"
 
-void trie_prepare(trie * t, string s, arena * a) {
-    for (size i = 0; i < s.len; i++) {
-        size pos = s_has_char(t->layer, s.data[i]);
-        if (pos != -1) {
-            t = &t->routes.data[pos];
-            continue;
-        } else {
-            *push(&t->layer, a) = s.data[i];
-            *push(&t->routes, a) = (trie){0};
-            t = &t->routes.data[t->routes.len - 1];
+size trie_has_(trie t, char c) {
+    for (size i = 0; i < t.len; i++) {
+        if (t.data[i].c == c) {
+            return i;
         }
     }
-    *push(&t->layer, a) = '\0'; //mark this as a valid terminal
-    *push(&t->routes, a) = (trie){0};//placeholder
+
+    return -1;
+}
+
+void trie_prepare(trie * t, string s, arena * a) {
+    for (size i = 0; i < s.len; i++) {
+        size pos = trie_has_(*t, s.data[i]);
+        if (pos != -1) {
+            t = t->data[pos].path;
+            continue;
+        } else {
+            *push(t, a) = (struct trie_path) {
+                .c = s.data[i],
+                .path = new(a, trie),
+            };
+            t = t->data[t->len-1].path;
+        }
+    }
+    *push(t, a) = (struct trie_path) {
+        .c = '\0',
+        .path = NULL
+    };
 }
 
 bool trie_contains(trie t, string s) {
     for (size i = 0; i < s.len; i++) {
-        size pos = s_has_char(t.layer, s.data[i]);
+        size pos = trie_has_(t, s.data[i]);
         if (pos == -1) {
             return false;
         }
-        t = t.routes.data[pos];
+        t = *t.data[pos].path;
     }
-    if (s_has_char(t.layer, '\0') != -1) {
+    if (trie_has_(t, '\0') != -1) {
         return true;
     }
     return false;

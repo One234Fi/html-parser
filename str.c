@@ -21,15 +21,6 @@ bool s_equal_ignore_case(string a, string b) {
     return true;
 }
 
-size s_has_char(string a, char c) {
-    for (size i = 0; i < a.len; i++) {
-        if (a.data[i] == c) {
-            return i;
-        }
-    }
-    return -1;
-}
-
 string s_clone(string s, arena * a) {
     string n = s;
     n.data = new(a, char, s.len);
