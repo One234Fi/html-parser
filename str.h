@@ -16,6 +16,7 @@ typedef struct {
 
 bool s_equal(string a, string b);
 bool s_equal_ignore_case(string a, string b);
+size s_has_char(string a, char c);
 string s_clone(string s, arena * a);
 string s_cat(string a, string b, arena * perm);
 
