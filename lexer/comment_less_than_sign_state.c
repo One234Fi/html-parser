@@ -1,0 +1,19 @@
+#include "lexer_internal.h"
+#include "lexer.h"
+
+
+void comment_less_than_sign_state(lexer * p) {
+    int c = input_system_consume(&p->input);
+    switch (c) {
+        case '!':
+            append_to_current_tag_token_comment_data(p, c);
+            p->state = COMMENT_LESS_THAN_SIGN_BANG_STATE;
+            break;
+        case '<':
+            append_to_current_tag_token_comment_data(p, c);
+            break;
+        default:
+            input_system_reconsume(&p->input);
+            p->state = COMMENT_STATE;
+    }
+}

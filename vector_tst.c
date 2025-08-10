@@ -1,7 +1,8 @@
 #include <stdio.h>
-#include "arena.h"
-#include "types.h"
-#include "vector.h"
+#include <assert.h>
+
+#define FICKIT_IMPL
+#include "fickit.h"
 
 struct i32s {
     i32 * data;
@@ -10,7 +11,7 @@ struct i32s {
 };
 
 int main() {
-    arena a = arena_init(1024);
+    arena a = arena_init(256);
     struct i32s test_vec = {0};
     *push_front(&test_vec, &a) = 5;
     *push_front(&test_vec, &a) = 4;
@@ -26,14 +27,16 @@ int main() {
     }
     printf("VECTOR: Queuing works\n");
 
-    pop_front(&test_vec);
 
-    for (size i = 0; i < test_vec.len; i++) {
-        assert(test_vec.data[i] == i && "VECTOR: The items should be in reverse order");
-        printf("%d\n", test_vec.data[i]);
+    size i = 0;
+    while (test_vec.len > 0) {
+        printf("%d\n", test_vec.data[0]);
+        assert(test_vec.data[0] == i && "VECTOR: The items should be in reverse order");
+        i++;
+        pop_front(&test_vec);
     }
-    assert(test_vec.len == 5 && "VECTOR: one item should be popped");
-    assert(test_vec.data[0] == 4 && "VECTOR: first item should be 4");
+    assert(test_vec.len == 0 && "VECTOR: vector should be empty");
+    printf("VECTOR: Popping works\n");
 
 
     printf("VECTOR: All vector tests passed\n");

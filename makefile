@@ -12,6 +12,9 @@ SRCS := $(shell find -name '*.c' -not -name '*_tst.c' -not -name 'main.c')
 OBJS := $(SRCS:.c=.o)
 DEPS := $(OBJS:.o=.d)
 
+INC_DIRS := . ./lexer
+CFLAGS += $(addprefix -I,$(INC_DIRS))
+
 TEST_SRCS := $(shell find  -name '*_tst.c')
 TEST_OBJS := $(TEST_SRCS:.c=.o)
 TEST_DEPS := $(TEST_OBJS:.o=.d)
@@ -24,10 +27,9 @@ endif
 
 
 $(TARGET_EXEC): main.o $(OBJS)
-	$(CC) main.o $(OBJS) -o $@ $(LDLIBS) $(LDFLAGS)
+	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS) $(LDFLAGS)
 
 %.o: %.c
-	mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 %_tst.out: %_tst.o $(OBJS)
@@ -35,7 +37,7 @@ $(TARGET_EXEC): main.o $(OBJS)
 
 .PHONY: clean tests
 clean:
-	rm *.o *.d $(TEST_EXECS) $(TARGET_EXEC)
+	rm *.o *.d ./lexer/*.d ./lexer/*.o $(TEST_EXECS) $(TARGET_EXEC)
 
 tests: $(TEST_EXECS)
 

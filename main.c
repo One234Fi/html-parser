@@ -4,11 +4,13 @@
  */
 
 
-#include "arena.h"
-#include "tokenizer.h"
+#include "parser.h"
+#include "lexer.h"
 #include <assert.h>
 #include <stdlib.h>
 #include <stdio.h>
+#define FICKIT_IMPL
+#include "fickit.h"
 
 int main(int argc, char* argv[]) {
     fprintf(stdout, "Passed %d arguments\n", argc);
@@ -19,10 +21,10 @@ int main(int argc, char* argv[]) {
         arena global = arena_wrap(1 << 16, backing);
         parser p = parser_init(argv[1], &global);
         int c = 0;
-        token t = get_token(&p);
+        token t = get_token(&p.lex);
         while (t.type != END_OF_FILE) {
             c++;
-            t = get_token(&p);
+            t = get_token(&p.lex);
         }
         printf("Token Count: %d\n", c);
         free(backing);
