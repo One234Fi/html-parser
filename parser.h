@@ -8,22 +8,13 @@ typedef enum {
     HTML_DOCUMENT,
     HTML_DOCTYPE,
     HTML_COMMENT,
+    HTML_TEMPLATE,
+    HTML_TABLE,
+    HTML_TBODY,
+    HTML_TFOOT,
+    HTML_THEAD,
+    HTML_TR,
 } node_type;
-
-typedef struct {
-    bool force_quirks;
-} document_node_t;
-
-typedef struct {
-    string name;
-    string public_id;
-    string system_id;
-} doctype_node_t;
-
-typedef struct {
-    string data;
-} comment_node_t;
-
 
 typedef struct node node;
 typedef struct nodes nodes;
@@ -45,6 +36,24 @@ typedef struct {
     size cap;
 } node_attrs;
 
+typedef struct {
+    bool force_quirks;
+} document_node_t;
+
+typedef struct {
+    string name;
+    string public_id;
+    string system_id;
+} doctype_node_t;
+
+typedef struct {
+    string data;
+} comment_node_t;
+
+typedef struct {
+    node * contents; //TODO: this is probably wrong
+} template_node_t;
+
 struct node {
     string name;
     node_attrs attributes;
@@ -52,11 +61,13 @@ struct node {
         document_node_t document;
         doctype_node_t doctype;
         comment_node_t comment;
+        template_node_t template;
     };
     node * parent;
     nodes children;
     node_type type;
 };
+
 
 
 typedef enum INSERTION_MODE_TYPE {

@@ -76,11 +76,11 @@ typedef enum node_family {
 } node_family;
 
 #define is_mathml_text_integration_point(node) \
-        (node.type == MATHML_MI_ELEMENT \
-        || node.type == MATHML_MO_ELEMENT \
-        || node.type == MATHML_MN_ELEMENT \
-        || node.type == MATHML_MS_ELEMENT \
-        || node.type == MATHML_MTEXT_ELEMENT)
+        (node->type == MATHML_MI_ELEMENT \
+        || node->type == MATHML_MO_ELEMENT \
+        || node->type == MATHML_MN_ELEMENT \
+        || node->type == MATHML_MS_ELEMENT \
+        || node->type == MATHML_MTEXT_ELEMENT)
 
 
 size stack_has(nodes stack, string name) {
@@ -121,8 +121,8 @@ bool has_attribute(node n, char *attr_type) {
 
 #define ATTRIBUTE_ENCODING "attribute_encoding_placeholder"
 
-node get_current_node();
-node get_adjusted_current_node();
+node * get_current_node();
+node * get_adjusted_current_node();
 
 bool in_html_namespace(node n) {
     LOG_WARN("UNIMPLEMENTED");
@@ -156,22 +156,22 @@ void tree_construction_phase(token input) {
 }
 
 void tree_construction_dispatcher(token input) {
-    node n = get_adjusted_current_node();
+    node * n = get_adjusted_current_node();
     string start_tag_name = *opt_unwrap(&input.start_tag.name, string, &String(""));
     if (state.open_elements_stack.len <= 0
-        || (in_html_namespace(n))
+        || (in_html_namespace(*n))
         || (is_mathml_text_integration_point(n)
             && input.type == START_TAG
             && (!s_equal_c(start_tag_name, "mglyph"))
             && (!s_equal_c(start_tag_name, "malignmark")))
         || (is_mathml_text_integration_point(n)
             && input.type == CHARACTER)
-        || (is_mathml_annotation_xml_element(n)
+        || (is_mathml_annotation_xml_element(*n)
             && input.type == START_TAG
             && (s_equal_c(start_tag_name, "svg")))
-        || (is_html_integration_point(n)
+        || (is_html_integration_point(*n)
             && input.type == START_TAG) 
-        || (is_html_integration_point(n)
+        || (is_html_integration_point(*n)
             && input.type == CHARACTER)
         || (input.type == END_OF_FILE)) {
 
@@ -182,15 +182,16 @@ void tree_construction_dispatcher(token input) {
     }
 }
 
-node get_current_node() {
-    return state.open_elements_stack.data[state.open_elements_stack.len-1];
+node * get_current_node() {
+    return &state.open_elements_stack.data[state.open_elements_stack.len-1];
 }
 
-node get_adjusted_current_node() { 
+node * get_adjusted_current_node() { 
     //only return the current node because the
     //fragment parsing alg is not implemented 
     return get_current_node();
 }
+
 
 bool is_html_integration_point(node n) {
     if (n.type == MATHML_ANNOTATION_XML_ELEMENT 
@@ -229,34 +230,34 @@ void after_frameset(parser * p, token t);
 void after_after_body(parser * p, token t);
 void after_after_frameset(parser * p, token t);
 
+static void (* parser_state_handlers[])(parser *, token) = {
+    insertion_mode_initial,
+    before_html,
+    before_head,
+    in_head,
+    in_head_noscript,
+    after_head,
+    in_body,
+    text,
+    in_table,
+    in_table_text,
+    in_caption,
+    in_column_group,
+    in_table_body,
+    in_row,
+    in_cell,
+    in_select,
+    in_select_in_table,
+    in_template,
+    after_body,
+    in_frameset,
+    after_frameset,
+    after_after_body,
+    after_after_frameset,
+};
+
 void process(parser * p, token t) {
-    switch (p->insert_mode) {
-        case INSERTION_MODE_INITIAL: insertion_mode_initial(p, t); break;
-        case BEFORE_HTML: before_html(p, t); break;
-        case BEFORE_HEAD: before_head(p, t); break;
-        case IN_HEAD: in_head(p, t); break;
-        case IN_HEAD_NOSCRIPT: in_head_noscript(p, t); break;
-        case AFTER_HEAD: after_head(p, t); break;
-        case IN_BODY: in_body(p, t); break;
-        case TEXT: text(p,t); break;
-        case IN_TABLE: in_table(p, t); break;
-        case IN_TABLE_TEXT: in_table_text(p, t); break; 
-        case IN_CAPTION: in_caption(p, t); break; 
-        case IN_COLUMN_GROUP: in_column_group(p, t); break;
-        case IN_TABLE_BODY: in_table_body(p, t); break;
-        case IN_ROW: in_row(p, t); break;
-        case IN_CELL: in_cell(p, t); break;
-        case IN_SELECT: in_select(p, t); break;
-        case IN_SELECT_IN_TABLE: in_select_in_table(p, t); break;
-        case IN_TEMPLATE: in_template(p, t); break;
-        case AFTER_BODY: after_body(p, t); break;
-        case IN_FRAMESET: in_frameset(p, t); break;
-        case AFTER_FRAMESET: after_frameset(p, t); break;
-        case AFTER_AFTER_BODY: after_after_body(p, t); break;
-        case AFTER_AFTER_FRAMESET: after_after_frameset(p, t); break;
-        default:
-            LOG_ERROR("Invalid insertion mode type!");
-    }
+    parser_state_handlers[p->insert_mode](p, t);
 }
 
 void insert_comment(string data, node * where, arena * a) {
@@ -264,6 +265,63 @@ void insert_comment(string data, node * where, arena * a) {
     node.type = HTML_COMMENT;
     node.comment.data = data;
     *push(&where->children, a) = node;
+}
+
+node * get_adjusted_insert_location(node * where, nodes open_elem_stack, bool foster_parenting, arena * a) {
+    node * target = where == NULL ? get_current_node() : where;
+    if (foster_parenting 
+            && (target->type == HTML_TABLE
+             || target->type == HTML_TBODY
+             || target->type == HTML_TFOOT
+             || target->type == HTML_THEAD
+             || target->type == HTML_TR)) {
+        //TODO: this is a dumb lazy way of doing this
+        node * last_template = NULL;
+        size last_template_index = -1;
+        node * last_table = NULL;
+        size last_table_index = -1;
+        for (size i = 0; i < open_elem_stack.len; i++) {
+            if (open_elem_stack.data[i].type == HTML_TEMPLATE) {
+                last_template = open_elem_stack.data + i;
+                last_template_index = i;
+            } else if (open_elem_stack.data[i].type == HTML_TABLE) {
+                last_table = open_elem_stack.data + i;
+                last_table_index = i;
+            }
+        }
+
+        bool template_lower = last_template_index > last_table_index;
+        if (last_template && (!last_table || template_lower)) {
+            target = target->template.contents;
+            goto short_circuit;
+        }
+
+        if (!last_table) {
+            target = &open_elem_stack.data[0]; //html element
+            goto short_circuit;
+        }
+
+        if (last_table->parent) {
+            target = last_table->parent;
+            //TODO: target should be inserted before last_table
+            goto short_circuit;
+        }
+
+        target = &open_elem_stack.data[last_table_index - 1];
+    }
+
+short_circuit:
+    if (target->type == HTML_TEMPLATE) {
+        return push(&target->template.contents->children, a);
+    }
+
+    return push(&target->children, a);
+}
+
+void insert_character_alg(string data, node * where) {
+}
+
+void insert_element() {
 }
 
 void insertion_mode_initial(parser * p, token t) {
