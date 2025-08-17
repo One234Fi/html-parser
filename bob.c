@@ -17,12 +17,31 @@ typedef struct command {
     size cap;
 } command;
 
-int run(command * c) {
+typedef struct {
+    int * data;
+    size len;
+    size cap;
+} pids;
+
+//TODO: limit fork count? fine for now, but could get bad if number of files increases a lot
+int run(command * c, pids * p, arena * a) {
     int pid = fork();
     if (pid == 0) return execv(c->data[0], c->data);
 
     c->len = 0;
+    if (p) {
+        *push(p, a) = pid;
+        return 1;
+    }
     return waitpid(pid, NULL, 0) == -1 ? 0 : 1;
+}
+
+int await_all(pids * p) {
+    //FIXME: this is kind of dumb but it works well enough for now
+    while (p->len > 0) {
+        wait(NULL);
+        p->len--;
+    }
 }
 
 void print_command(command c) {
@@ -125,6 +144,8 @@ int main(int argc, char * argv[]) {
     char ** src_files = get_files(src_dirs, src_file_cmp, &a, &b);
 
     command c = {0};
+    pids p = {0};
+    arena pid_buf = arena_init(sizeof(int) * 256);
 
     for_each (src_files, src_iter) {
         *push(&c, &a) = cc;
@@ -141,11 +162,12 @@ int main(int argc, char * argv[]) {
         }
 
         print_command(c);
-        int res = run(&c);
+        int res = run(&c, &p, &pid_buf);
         if (res == -1) {
             printf("Failed to build\n");
         }
     }
+    await_all(&p);
 
     *push(&c, &a) = cc;
     for_each (cc_flags, iter) {
@@ -158,12 +180,11 @@ int main(int argc, char * argv[]) {
     }
     for_each (src_files, src_iter) {
         //ok to mutate now since compiling is done
-        printf("%s\n", *src_iter);
         *push(&c, &a) = target_of(*src_iter, &b);
     }
 
     print_command(c);
-    int res = run(&c);
+    int res = run(&c, NULL, NULL);
     if (res == -1) {
         printf("Failed to build\n");
     }
