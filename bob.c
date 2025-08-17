@@ -1,5 +1,6 @@
 //bob can build it
 #include <stdlib.h>
+#include <string.h>
 #define FICKIT_IMPL
 #include "fickit.h"
 
@@ -64,7 +65,7 @@ int ends_with(const char * str, const char * suf) {
     return 1;
 }
 
-char * target_of(const char * str, arena * a) {
+char * object_of(const char * str, arena * a) {
     int len = strlen(str) + 1;
     char * s = new(a, char, len);
     memcpy(s, str, len);
@@ -73,10 +74,27 @@ char * target_of(const char * str, arena * a) {
     return s;
 }
 
+char * target_of(const char * str, arena * a) {
+    int len = strlen(str) + 3;
+    char * s = new(a, char, len);
+    memcpy(s, str, len);
+    s[len - 4] = 'o';
+    s[len - 3] = 'u';
+    s[len - 2] = 't';
+    s[len - 1] = '\0';
+    return s;
+}
+
 int src_file_cmp(const char * s) {
-    return ends_with(s, ".c") 
-        && (strcmp("bob.c", s) != 0) 
+    return ends_with(s, ".c")
+        && (strcmp("bob.c", s) != 0)
+        && (strcmp("main.c", s) != 0)
         && !ends_with(s, "_tst.c");
+}
+
+int target_file_cmp(const char * s) {
+    return (strcmp("main.c", s) == 0)
+        || ends_with(s, "_tst.c");
 }
 
 char ** get_files(char ** dirs, int (*compare)(const char *), arena * ptrs, arena * strs) {
@@ -142,6 +160,7 @@ int main(int argc, char * argv[]) {
     };
 
     char ** src_files = get_files(src_dirs, src_file_cmp, &a, &b);
+    char ** target_files = get_files(src_dirs, target_file_cmp, &a, &b);
 
     command c = {0};
     pids p = {0};
@@ -156,7 +175,28 @@ int main(int argc, char * argv[]) {
         *push(&c, &a) = "-c";
         *push(&c, &a) = *src_iter;
         *push(&c, &a) = "-o";
-        *push(&c, &a) = target_of(*src_iter, &b);
+        *push(&c, &a) = object_of(*src_iter, &b);
+        for (char ** iter = inc_flags; *iter != NULL; iter++) {
+            *push(&c, &a) = *iter;
+        }
+
+        print_command(c);
+        int res = run(&c, &p, &pid_buf);
+        if (res == -1) {
+            printf("Failed to build\n");
+        }
+    }
+
+    for_each (target_files, target) {
+        *push(&c, &a) = cc;
+
+        for_each (cc_flags, iter) {
+            *push(&c, &a) = *iter;
+        }
+        *push(&c, &a) = "-c";
+        *push(&c, &a) = *target;
+        *push(&c, &a) = "-o";
+        *push(&c, &a) = object_of(*target, &b);
         for (char ** iter = inc_flags; *iter != NULL; iter++) {
             *push(&c, &a) = *iter;
         }
@@ -169,23 +209,27 @@ int main(int argc, char * argv[]) {
     }
     await_all(&p);
 
-    *push(&c, &a) = cc;
-    for_each (cc_flags, iter) {
-        *push(&c, &a) = *iter;
-    }
-    *push(&c, &a) = "-o";
-    *push(&c, &a) = "main.out";
-    for_each (linker_flags, iter) {
-        *push(&c, &a) = *iter;
-    }
-    for_each (src_files, src_iter) {
-        //ok to mutate now since compiling is done
-        *push(&c, &a) = target_of(*src_iter, &b);
-    }
+    for_each(target_files, target) {
+        *push(&c, &a) = cc;
+        for_each (cc_flags, iter) {
+            *push(&c, &a) = *iter;
+        }
+        *push(&c, &a) = "-o";
+        *push(&c, &a) = target_of(*target, &b);
+        for_each (linker_flags, iter) {
+            *push(&c, &a) = *iter;
+        }
+        for_each (src_files, src_iter) {
+            //ok to mutate now since compiling is done
+            *push(&c, &a) = object_of(*src_iter, &b);
+        }
+        *push(&c, &a) = object_of(*target, &b);
 
-    print_command(c);
-    int res = run(&c, NULL, NULL);
-    if (res == -1) {
-        printf("Failed to build\n");
+        print_command(c);
+        int res = run(&c, &p, &pid_buf);
+        if (res == -1) {
+            printf("Failed to build: %s\n", *target);
+        }
     }
+    await_all(&p);
 }
