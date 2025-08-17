@@ -37,7 +37,7 @@ int run(command * c, pids * p, arena * a) {
     return waitpid(pid, NULL, 0) == -1 ? 0 : 1;
 }
 
-int await_all(pids * p) {
+void await_all(pids * p) {
     //FIXME: this is kind of dumb but it works well enough for now
     while (p->len > 0) {
         wait(NULL);
@@ -109,7 +109,7 @@ char ** get_files(char ** dirs, int (*compare)(const char *), arena * ptrs, aren
         DIR * d = opendir(str);
         if (d) {
             while ((entry = readdir(d)) != NULL) {
-                if (entry->d_type == DT_REG && compare(entry->d_name)) {
+                if (compare(entry->d_name)) {
                     int name_len = strlen(str) + strlen(entry->d_name) + 1;
                     char * buf = new(strs, char, name_len);
                     memset(buf, 0, name_len);
