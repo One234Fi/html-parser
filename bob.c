@@ -6,9 +6,10 @@
 
 #include <sys/types.h>
 #include <dirent.h>
-
 #include <unistd.h>
 #include <sys/wait.h>
+#include <fcntl.h>
+#include <sys/stat.h>
 
 #define for_each(list, handle) for (typeof(*list) (* handle) = list; *handle != NULL; handle++)
 
@@ -166,19 +167,97 @@ int main(int argc, char * argv[]) {
     pids p = {0};
     arena pid_buf = arena_init(sizeof(int) * 256);
 
+    struct stat exec_stat;
+    int efd = open("./bob.out", O_RDONLY);
+    int res = fstat(efd, &exec_stat);
+    if (res != 0) {
+        perror("exec fstat");
+        exit(1);
+    }
+    close(efd);
+
+    struct stat src_stat;
+    int sfd = open("./bob.c", O_RDONLY);
+    res = fstat(sfd, &src_stat);
+    if (res != 0) {
+        perror("src fstat");
+        exit(1);
+    }
+    close(sfd);
+
+    if (exec_stat.st_mtime < src_stat.st_mtime) {
+        *push(&c, &a) = "/bin/mv";
+        *push(&c, &a) = "bob.out";
+        *push(&c, &a) = "bob.old";
+        *push(&c, &a) = NULL;
+        print_command(c);
+        if (!run(&c, NULL, NULL)) {
+            printf("Failed to move bob\n");
+            exit(1);
+        }
+
+        *push(&c, &a) = cc;
+        for_each (cc_flags, iter) {
+            *push(&c, &a) = *iter;
+        }
+        for_each (inc_flags, iter) {
+            *push(&c, &a) = *iter;
+        }
+        *push(&c, &a) = "./bob.c";
+        *push(&c, &a) = "-o";
+        *push(&c, &a) = "./bob.out";
+        *push(&c, &a) = NULL;
+        print_command(c);
+        if (!run(&c, NULL, NULL)) {
+            *push(&c, &a) = "/bin/mv";
+            *push(&c, &a) = "bob.old";
+            *push(&c, &a) = "bob.out";
+            *push(&c, &a) = NULL;
+            print_command(c);
+            if (!run(&c, NULL, NULL)) {
+                printf("Failed to move bob.old\n");
+                exit(1);
+            }
+
+            printf("Failed to bootrap bob\n");
+            exit(1);
+        }
+
+        *push(&c, &a) = "./bob.out";
+        *push(&c, &a) = NULL;
+        if (!run(&c, NULL, NULL)) {
+            *push(&c, &a) = "/bin/mv";
+            *push(&c, &a) = "bob.old";
+            *push(&c, &a) = "bob.out";
+            *push(&c, &a) = NULL;
+            print_command(c);
+            if (!run(&c, NULL, NULL)) {
+                printf("Failed to move bob.old\n");
+                exit(1);
+            }
+
+            printf("Failed to run bob.out after rebuild\n");
+            exit(1);
+        }
+
+        exit(0);
+    }
+
+
     for_each (src_files, src_iter) {
         *push(&c, &a) = cc;
 
         for_each (cc_flags, iter) {
             *push(&c, &a) = *iter;
         }
+        for (char ** iter = inc_flags; *iter != NULL; iter++) {
+            *push(&c, &a) = *iter;
+        }
         *push(&c, &a) = "-c";
         *push(&c, &a) = *src_iter;
         *push(&c, &a) = "-o";
         *push(&c, &a) = object_of(*src_iter, &b);
-        for (char ** iter = inc_flags; *iter != NULL; iter++) {
-            *push(&c, &a) = *iter;
-        }
+        *push(&c, &a) = NULL;
 
         print_command(c);
         int res = run(&c, &p, &pid_buf);
@@ -193,13 +272,14 @@ int main(int argc, char * argv[]) {
         for_each (cc_flags, iter) {
             *push(&c, &a) = *iter;
         }
+        for (char ** iter = inc_flags; *iter != NULL; iter++) {
+            *push(&c, &a) = *iter;
+        }
         *push(&c, &a) = "-c";
         *push(&c, &a) = *target;
         *push(&c, &a) = "-o";
         *push(&c, &a) = object_of(*target, &b);
-        for (char ** iter = inc_flags; *iter != NULL; iter++) {
-            *push(&c, &a) = *iter;
-        }
+        *push(&c, &a) = NULL;
 
         print_command(c);
         int res = run(&c, &p, &pid_buf);
@@ -224,6 +304,7 @@ int main(int argc, char * argv[]) {
             *push(&c, &a) = object_of(*src_iter, &b);
         }
         *push(&c, &a) = object_of(*target, &b);
+        *push(&c, &a) = NULL;
 
         print_command(c);
         int res = run(&c, &p, &pid_buf);
