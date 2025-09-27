@@ -1,7 +1,6 @@
 #include <stdio.h>
 #include <assert.h>
 
-#define FICKIT_IMPL
 #include "fickit.h"
 
 struct i32s {

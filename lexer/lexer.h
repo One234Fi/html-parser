@@ -33,15 +33,8 @@ typedef struct {
 
 typedef struct {
     opt_str name;
-    token_attrs attributes;
     bool self_closing;
-} t_start_tag;
-
-typedef struct {
-    opt_str name;
-    token_attrs attributes;
-    bool self_closing;
-} t_end_tag;
+} t_tag;
 
 typedef struct {
     string data;
@@ -57,12 +50,12 @@ typedef struct {
 typedef struct {
     union {
         t_doctype doctype;
-        t_start_tag start_tag;
-        t_end_tag end_tag;
+        t_tag tag;
         t_comment comment;
         t_character character;
         t_eof eof;
     };
+    token_attrs attrs;
     token_type type;
 } token;
 

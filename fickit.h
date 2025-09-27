@@ -55,10 +55,12 @@ typedef struct {
     char * beg;
     char * pos;
     char * end;
+    char * debug_name;
 } arena;
 
 arena arena_init(size cap);
 arena arena_wrap(size cap, void * mem);
+arena arena_slice(arena * a, size cap);
 void * alloc(arena * a, size stride, size align, size count);
 
 
@@ -71,11 +73,17 @@ void _grow(void * slice, size stride, arena * a);
 void _shift_right_impl(void * slice, size index, size stride, arena * a);
 void _shift_left_impl(void * slice, size index, size stride);
 
-typedef struct {
+typedef struct string {
     char * data;
     size len;
     size cap;
 } string;
+
+typedef struct string_buffer {
+    char * data;
+    size len;
+    size cap;
+} string_buffer;
 
 #define String(s) (string){(char*)s, strlen(s), 0}
 bool s_equal(string a, string b);
@@ -130,11 +138,19 @@ arena arena_wrap(size cap, void * mem) {
     return a;
 }
 
+arena arena_slice(arena * a, size cap) {
+    char * backing = new(a, char, cap);
+    return arena_wrap(cap, backing);
+}
+
 void * alloc(arena * a, size stride, size align, size count) {
     assert(stride != 0);
     size padding = -(usize)a->pos & (align - 1);
     size available = a->end - a->pos - padding;
     if (available < 0 || count > available / stride) {
+        if (a->debug_name != NULL) {
+            printf("%s", a->debug_name);
+        } 
         die("Arena OOM");
     }
     void * p = a->pos + padding;

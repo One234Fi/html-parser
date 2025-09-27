@@ -4,16 +4,22 @@
 #include "fickit.h"
 #include "lexer.h"
 
+
+
 typedef enum {
+    HTML_ELEMENT,
     HTML_DOCUMENT,
+    HTML_SOURCE_DOCUMENT,
     HTML_DOCTYPE,
     HTML_COMMENT,
     HTML_TEMPLATE,
+    HTML_BODY,
     HTML_TABLE,
     HTML_TBODY,
     HTML_TFOOT,
     HTML_THEAD,
     HTML_TR,
+    HTML_TEXT,
 } node_type;
 
 typedef struct node node;
@@ -37,7 +43,9 @@ typedef struct {
 } node_attrs;
 
 typedef struct {
+    bool quirks_mode;
     bool force_quirks;
+    bool is_iframe_srcdoc;
 } document_node_t;
 
 typedef struct {
@@ -54,6 +62,35 @@ typedef struct {
     node * contents; //TODO: this is probably wrong
 } template_node_t;
 
+typedef struct {
+    string data;
+} text_node_t;
+
+
+
+typedef enum {
+    CUSTELEM_UNDEFINED,
+    CUSTELEM_FAILED,
+    CUSTELEM_UNCUSTOMIZED,
+    CUSTELEM_PRECUSTOMIZED,
+    CUSTELEM_CUSTOM,
+
+    CUSTELEM_COUNT,
+} cust_elem_state;
+
+typedef struct {} CustomElementRegistry;
+typedef struct {} CustomElementDefinition;
+
+typedef struct {
+    string namespace;
+    char * namespace_prefix;
+    string local_name;
+    CustomElementRegistry * custom_element_registry;
+    cust_elem_state custom_element_state;
+    CustomElementDefinition * custom_element_definition;
+    char * is;
+} Element;
+
 struct node {
     string name;
     node_attrs attributes;
@@ -62,13 +99,15 @@ struct node {
         doctype_node_t doctype;
         comment_node_t comment;
         template_node_t template;
+        text_node_t text;
+        Element element;
     };
+    node * node_document;
     node * parent;
+    node * prev;
     nodes children;
     node_type type;
 };
-
-
 
 typedef enum INSERTION_MODE_TYPE {
     INSERTION_MODE_INITIAL,
@@ -104,6 +143,7 @@ typedef struct {
     enum INSERTION_MODE_TYPE original_insert_mode;
     bool frameset_ok;
     bool parser_mode_frozen;
+    bool cannot_change_mode;
     lexer lex;
 } parser;
 

@@ -1,5 +1,4 @@
 #include "lexer.h"
-#define FICKIT_IMPL
 #include "fickit.h"
 #include "parser.h"
 #include <stdio.h>

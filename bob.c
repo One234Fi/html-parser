@@ -320,7 +320,7 @@ int main(int argc, char * argv[]) {
 
     for_each(target_files, target) {
         char * target_obj = target_of(*target, &b);
-        if (compare_age(*target, target_obj) > 0) {
+        if (built_files.len > 0) {
             *push(&c, &a) = cc;
             for_each (cc_flags, iter) {
                 *push(&c, &a) = *iter;

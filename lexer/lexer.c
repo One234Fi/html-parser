@@ -55,12 +55,12 @@ string token_to_string(token t, arena * a) {
 
         case START_TAG: {
                 string ret = String("<");
-                ret = s_cat(ret, *opt_get(&t.start_tag.name, string), a);
-                for (size i = 0; i < t.start_tag.attributes.len; i++) {
+                ret = s_cat(ret, *opt_get(&t.tag.name, string), a);
+                for (size i = 0; i < t.attrs.len; i++) {
                     ret = s_cat(ret, String(" "), a);
-                    ret = s_cat(ret, t.start_tag.attributes.data[i].name, a);
+                    ret = s_cat(ret, t.attrs.data[i].name, a);
                     ret = s_cat(ret, String("=\""), a);
-                    ret = s_cat(ret, t.start_tag.attributes.data[i].value, a);
+                    ret = s_cat(ret, t.attrs.data[i].value, a);
                     ret = s_cat(ret, String("\""), a);
                 }
                 ret = s_cat(ret, String(">"), a);
@@ -70,7 +70,7 @@ string token_to_string(token t, arena * a) {
 
         case END_TAG: {
                 string ret = String("</");
-                ret = s_cat(ret, *opt_get(&t.end_tag.name, string), a);
+                ret = s_cat(ret, *opt_get(&t.tag.name, string), a);
                 ret = s_cat(ret, String(">"), a);
                 return ret;
             } 
@@ -212,8 +212,10 @@ void emit_token(lexer * lexer, token t) {
 
 
 void clear_temporary_buffer(lexer * lexer) {
-    memset(lexer->temp_buf.data, 0, lexer->temp_buf.len);
-    lexer->temp_buf.len = 0;
+    if (lexer->temp_buf.data != NULL) {
+        memset(lexer->temp_buf.data, 0, lexer->temp_buf.len);
+        lexer->temp_buf.len = 0;
+    }
 }
 
 
@@ -264,9 +266,9 @@ void append_to_current_tag_token_comment_data(lexer * lexer, int c) {
 bool current_token_is_valid(lexer * lexer) {
     if (lexer->last_start_tag_name.exists 
             && lexer->current_token.type == END_TAG
-            && lexer->current_token.end_tag.name.exists) {
+            && lexer->current_token.tag.name.exists) {
         string start_tag = * (string *) lexer->last_start_tag_name.val;
-        string end_tag = * (string *) lexer->current_token.end_tag.name.val;
+        string end_tag = * (string *) lexer->current_token.tag.name.val;
         return s_equal(start_tag, end_tag);
     }
     return false;
@@ -413,9 +415,9 @@ char input_system_peek(input_system * s) {
 
 void set_self_closing_tag_for_current_token(lexer * lexer, bool b) {
     if (lexer->current_token.type == START_TAG) {
-        lexer->current_token.start_tag.self_closing = true;
+        lexer->current_token.tag.self_closing = true;
     } else if (lexer->current_token.type == END_TAG) {
-        lexer->current_token.end_tag.self_closing = true;
+        lexer->current_token.tag.self_closing = true;
     } else {
         LOG_ERROR("Token of type "xstr(p->current_token.type)" does not have a self closing flag");
     }
@@ -423,9 +425,9 @@ void set_self_closing_tag_for_current_token(lexer * lexer, bool b) {
 
 void append_to_current_tag_token_name(lexer * lexer, int c) {
     if (lexer->current_token.type == START_TAG) {
-        opt_str_append(&lexer->current_token.start_tag.name, lexer->arena, c);
+        opt_str_append(&lexer->current_token.tag.name, lexer->arena, c);
     } else if (lexer->current_token.type == END_TAG) {
-        opt_str_append(&lexer->current_token.end_tag.name, lexer->arena, c);
+        opt_str_append(&lexer->current_token.tag.name, lexer->arena, c);
     } else if (lexer->current_token.type == DOCTYPE) {
         opt_str_append(&lexer->current_token.doctype.name, lexer->arena, c);
     } else {
@@ -436,10 +438,10 @@ void append_to_current_tag_token_name(lexer * lexer, int c) {
 void start_new_attribute_for_current_tag_token(lexer * lexer) {
     if (lexer->current_token.type == START_TAG) {
         token_attr a = {0};
-        *push(&lexer->current_token.start_tag.attributes, lexer->arena) = a;
+        *push(&lexer->current_token.attrs, lexer->arena) = a;
     } else if (lexer->current_token.type == END_TAG) {
         token_attr a = {0};
-        *push(&lexer->current_token.end_tag.attributes, lexer->arena) = a;
+        *push(&lexer->current_token.attrs, lexer->arena) = a;
     } else {
         LOG_ERROR("Token of type "xstr(p->current_token.type)" does not have a tag name");
     }
@@ -447,10 +449,10 @@ void start_new_attribute_for_current_tag_token(lexer * lexer) {
 
 void append_to_current_tag_token_attribute_name(lexer * lexer, int c) {
     if (lexer->current_token.type == START_TAG) {
-        token_attrs a = lexer->current_token.start_tag.attributes;
+        token_attrs a = lexer->current_token.attrs;
         *push(&a.data[a.len-1].name, lexer->arena) = c;
     } else if (lexer->current_token.type == END_TAG) {
-        token_attrs a = lexer->current_token.end_tag.attributes;
+        token_attrs a = lexer->current_token.attrs;
         *push(&a.data[a.len-1].name, lexer->arena) = c;
     } else {
         LOG_ERROR("Token of type "xstr(p->current_token.type)" does not have a tag name");
@@ -459,10 +461,10 @@ void append_to_current_tag_token_attribute_name(lexer * lexer, int c) {
 
 void append_to_current_tag_token_attribute_value(lexer * lexer, int c) {
     if (lexer->current_token.type == START_TAG) {
-        token_attrs a = lexer->current_token.start_tag.attributes;
+        token_attrs a = lexer->current_token.attrs;
         *push(&a.data[a.len-1].value, lexer->arena) = c;
     } else if (lexer->current_token.type == END_TAG) {
-        token_attrs a = lexer->current_token.end_tag.attributes;
+        token_attrs a = lexer->current_token.attrs;
         *push(&a.data[a.len-1].value, lexer->arena) = c;
     } else {
         LOG_ERROR("Token of type "xstr(p->current_token.type)" does not have a tag name");
@@ -505,24 +507,14 @@ bool in_html_namespace_placeholder() {
  * new attribute needs to be removed from the token
  */
 void check_for_duplicate_attributes(lexer * lexer) {
-    token_attrs list;
-    if (lexer->current_token.type == START_TAG) {
-        list = lexer->current_token.start_tag.attributes;
-    } else if (lexer->current_token.type == END_TAG) {
-        list = lexer->current_token.end_tag.attributes;
-    } else {
-        LOG_ERROR("Token of type "xstr(p->current_token.type)" does not have attributes");
-        return;
-    }
-
-    string new_attr = list.data[list.len-1].name;
-    for (size i = 0; i < lexer->current_token.start_tag.attributes.len-1; i++) {
-        if (s_equal(new_attr, list.data[i].name)) {
+    string new_attr = lexer->current_token.attrs.data[lexer->current_token.attrs.len-1].name;
+    for (size i = 0; i < lexer->current_token.attrs.len-1; i++) {
+        if (s_equal(new_attr, lexer->current_token.attrs.data[i].name)) {
             LOG_ERROR(xstr(DUPLICATE_ATTRIBUTE_PARSE_ERROR));
             if (lexer->current_token.type == START_TAG) {
-                lexer->current_token.start_tag.attributes.len--;
+                lexer->current_token.attrs.len--;
             } else if (lexer->current_token.type == END_TAG) {
-                lexer->current_token.end_tag.attributes.len--;
+                lexer->current_token.attrs.len--;
             }
             break;
         }

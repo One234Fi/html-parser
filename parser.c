@@ -83,6 +83,15 @@ typedef enum node_family {
         || node->type == MATHML_MTEXT_ELEMENT)
 
 
+size stack_has_c(nodes stack, char * name) {
+    for (size i = 0; i < stack.len; i++) {
+        if (s_equal_c(stack.data[i].name, name)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 size stack_has(nodes stack, string name) {
     for (size i = 0; i < stack.len; i++) {
         if (s_equal(stack.data[i].name, name)) {
@@ -108,8 +117,8 @@ parser parser_init(const char* filename, arena * a) {
 
 //TREEBUILDER
 
-void tree_construction_phase(token input);
-void tree_construction_dispatcher(token input);
+void tree_construction_phase(parser * p, token input);
+void tree_construction_dispatcher(parser * p, token input);
 
 
 bool has_attribute(node n, char* attr_type);
@@ -121,8 +130,8 @@ bool has_attribute(node n, char *attr_type) {
 
 #define ATTRIBUTE_ENCODING "attribute_encoding_placeholder"
 
-node * get_current_node();
-node * get_adjusted_current_node();
+node * get_current_node(parser * p);
+node * get_adjusted_current_node(parser * p);
 
 bool in_html_namespace(node n) {
     LOG_WARN("UNIMPLEMENTED");
@@ -143,22 +152,15 @@ typedef struct tree_construction_state {
     enum INSERTION_MODE_TYPE insertion_mode;
 } tree_construction_state;
 
-static tree_construction_state state;
-
-void tree_construction_init() {
-    state = (tree_construction_state) {
-        .insertion_mode = INSERTION_MODE_INITIAL
-    };
+void tree_construction_phase(parser * p, token input) {
+    tree_construction_dispatcher(p, input); //TODO: why did I do this??
 }
 
-void tree_construction_phase(token input) {
-    tree_construction_dispatcher(input);
-}
-
-void tree_construction_dispatcher(token input) {
-    node * n = get_adjusted_current_node();
-    string start_tag_name = *opt_unwrap(&input.start_tag.name, string, &String(""));
-    if (state.open_elements_stack.len <= 0
+void process(parser * p, token t); //FIXME
+void tree_construction_dispatcher(parser * p, token input) {
+    node * n = get_adjusted_current_node(p);
+    string start_tag_name = *opt_unwrap(&input.tag.name, string, &String(""));
+    if (p->open_elem_stack.len <= 0
         || (in_html_namespace(*n))
         || (is_mathml_text_integration_point(n)
             && input.type == START_TAG
@@ -176,24 +178,26 @@ void tree_construction_dispatcher(token input) {
         || (input.type == END_OF_FILE)) {
 
         //insertion mode processing
-        //process();
+        process(p, input);
     } else {
         //foreign content processing
     }
 }
 
-node * get_current_node() {
-    return &state.open_elements_stack.data[state.open_elements_stack.len-1];
+node * get_current_node(parser * p) {
+    return &p->open_elem_stack.data[p->open_elem_stack.len-1];
 }
 
-node * get_adjusted_current_node() { 
-    //only return the current node because the
-    //fragment parsing alg is not implemented 
-    return get_current_node();
+node * get_adjusted_current_node(parser * p) { 
+    //TODO:
+    //  only return the current node because the
+    //  fragment parsing alg is not implemented 
+    return get_current_node(p);
 }
 
 
 bool is_html_integration_point(node n) {
+    //TODO: this is wrong/pseudocode...
     if (n.type == MATHML_ANNOTATION_XML_ELEMENT 
             && has_attribute(n, ATTRIBUTE_ENCODING)
             && (s_equal_ignore_case(n.name, String("text/html")) || 
@@ -260,15 +264,24 @@ void process(parser * p, token t) {
     parser_state_handlers[p->insert_mode](p, t);
 }
 
+node * push_child(node * parent, arena * a) {
+    node * new_node = push(&parent->children, a);
+    new_node->parent = parent;
+    if (parent->children.len > 1) {
+        new_node->prev = &parent->children.data[parent->children.len - 2];
+    }
+    return new_node;
+}
+
 void insert_comment(string data, node * where, arena * a) {
     node node = {0};
     node.type = HTML_COMMENT;
     node.comment.data = data;
-    *push(&where->children, a) = node;
+    *push_child(where, a) = node;
 }
 
-node * get_adjusted_insert_location(node * where, nodes open_elem_stack, bool foster_parenting, arena * a) {
-    node * target = where == NULL ? get_current_node() : where;
+node * get_adjusted_insert_location(parser * p, node * where, bool foster_parenting) {
+    node * target = where == NULL ? get_current_node(p) : where;
     if (foster_parenting 
             && (target->type == HTML_TABLE
              || target->type == HTML_TBODY
@@ -280,12 +293,12 @@ node * get_adjusted_insert_location(node * where, nodes open_elem_stack, bool fo
         size last_template_index = -1;
         node * last_table = NULL;
         size last_table_index = -1;
-        for (size i = 0; i < open_elem_stack.len; i++) {
-            if (open_elem_stack.data[i].type == HTML_TEMPLATE) {
-                last_template = open_elem_stack.data + i;
+        for (size i = 0; i < p->open_elem_stack.len; i++) {
+            if (p->open_elem_stack.data[i].type == HTML_TEMPLATE) {
+                last_template = p->open_elem_stack.data + i;
                 last_template_index = i;
-            } else if (open_elem_stack.data[i].type == HTML_TABLE) {
-                last_table = open_elem_stack.data + i;
+            } else if (p->open_elem_stack.data[i].type == HTML_TABLE) {
+                last_table = p->open_elem_stack.data + i;
                 last_table_index = i;
             }
         }
@@ -297,7 +310,7 @@ node * get_adjusted_insert_location(node * where, nodes open_elem_stack, bool fo
         }
 
         if (!last_table) {
-            target = &open_elem_stack.data[0]; //html element
+            target = &p->open_elem_stack.data[0]; //html element
             goto short_circuit;
         }
 
@@ -307,38 +320,103 @@ node * get_adjusted_insert_location(node * where, nodes open_elem_stack, bool fo
             goto short_circuit;
         }
 
-        target = &open_elem_stack.data[last_table_index - 1];
+        target = &p->open_elem_stack.data[last_table_index - 1];
     }
 
 short_circuit:
     if (target->type == HTML_TEMPLATE) {
-        return push(&target->template.contents->children, a);
+        return push_child(target->template.contents, p->arena);
     }
 
-    return push(&target->children, a);
+    return push_child(target, p->arena);
 }
 
-void insert_character_alg(string data, node * where) {
+void insert_character_alg(parser * p, string data, node * where) {
+    where = get_adjusted_insert_location(p, where, false);
+    if (where->type == HTML_DOCUMENT) {
+        return;
+    }
+
+    if (where->prev->type == HTML_TEXT) {
+        string s = s_cat(where->prev->text.data, data, p->arena);
+        where->prev->text.data = s;
+    } else {
+        //create node
+    }
 }
 
-void insert_element() {
+
+node * create_element(node * document, string local_name, string namespace, char * prefix, char * is, bool will_execute_script, void * registry, arena * perm) {
+    //TODO: skipping custom registry stuff...
+
+    node * result = new(perm, node);
+    result->type = HTML_ELEMENT;
+    result->node_document = document;
+    result->parent = document;
+    result->element.namespace = namespace;
+    result->element.local_name = local_name;
+    result->element.namespace_prefix = prefix;
+    result->element.is = is;
+    result->element.custom_element_registry = NULL;
+    result->element.custom_element_state = CUSTELEM_UNDEFINED;
+
+    return result;
+}
+
+node * create_element_for_token(token t, string namespace, node * target, arena * perm) {
+    //TODO: Skipping speculative parsing for now
+    // if (active_speculative_parser != NULL) return create_mock_element(...);
+    // else create_mock_element(...);
+    // ...
+
+    node * document = target->node_document;
+    string local_name = *opt_unwrap(&t.tag.name, string, &String(""));
+    char * is = NULL;
+    bool will_execute_script = false;
+    void * registry = NULL;
+    //TODO: add "is" attribute handling whenever I fill in custom elements
+    //string is = t.is;
+    //void * registry = lookup_custom_elem_registry(target);
+    //void * definition = lookup_custom_elem_definition(registry, namespace, local_name, is)
+    //bool will_execute_script = definition && !p->is_parsing_fragment;
+    //if (will_execute_script) {
+    //  document.throw_on_dynamicy_markup_insertion_counter++;
+    //  if (is_empty(JS_EXEC_CONTEXT_STACK)) {
+    //      microtask_checkpoint();
+    //  }
+    //  *push(document.relevant_agent.custom_element_reaction_stack) = new_element_queue();
+    //}
+
+    node * element = create_element(document, local_name, namespace, NULL, is, will_execute_script, registry, perm);
+    for (size i = 0; i < t.attrs.len; i++) {
+        //TODO: this might not work
+        *push(&element->attributes, perm) = * (node_attr *) &t.attrs.data[i];
+    }
+    //if (will_execute_script) {
+    //  let queue = pop(document.relevant_agent.custom_element_reaction_stack)
+    //  invoke_custom_element_reactions(queue)
+    //  document.throw_on_dynamicy_markup_insertion_counter--;
+    //}
+
+    //
+    //more stuff...
+    //
+    //
+
+    return element;
 }
 
 void insertion_mode_initial(parser * p, token t) {
     switch (t.type) {
         case CHARACTER: 
-            {
-                if (t.character.data == '\t' ||
-                        t.character.data == '\n' ||
-                        t.character.data == '\f' ||
-                        t.character.data == '\r' ||
-                        t.character.data == ' ') {
-                    //ignore
-                    break;
-                }
-                //if not an iframe srcdoc doc, then parse error
-                p->insert_mode = BEFORE_HTML;
-                process(p, t); //reprocess
+            if (t.character.data == '\t' ||
+                    t.character.data == '\n' ||
+                    t.character.data == '\f' ||
+                    t.character.data == '\r' ||
+                    t.character.data == ' ') {
+                //ignore
+            } else {
+                goto _default;
             }
             break;
         case COMMENT:
@@ -348,7 +426,7 @@ void insertion_mode_initial(parser * p, token t) {
             if (!t.doctype.name.exists
                     || !opt_str_equal_c(&t.doctype.name, "html") 
                     || t.doctype.public_id.exists) {
-                //parse_error
+                LOG_ERROR("Unexpected doctype token in initial insert state");
             }
             node n = {0};
             n.type = HTML_DOCTYPE;
@@ -358,22 +436,32 @@ void insertion_mode_initial(parser * p, token t) {
             *push(&p->document.children, p->arena) = n;
 
             // TODO: handle quirks mode check better
-            if (!s_equal_c(n.doctype.name, "html")) {
-                p->document.document.force_quirks = true;
+            if (!s_equal_c(n.doctype.name, "html")
+                    && !p->cannot_change_mode
+                    && !p->document.document.is_iframe_srcdoc
+                    /* TODO: && doctype_matches_a_condition...() */) {
+                p->document.document.quirks_mode = true;
             }
             p->insert_mode = BEFORE_HTML;
             break;
         default:
-            //if not an iframe srcdoc doc, then parse error
-            p->insert_mode = BEFORE_HTML;
-            process(p, t); //reprocess
     }
+    return;
+_default:
+    if (!p->document.document.is_iframe_srcdoc) {
+        LOG_ERROR("Unexpected document type in initial insert state");
+        if (!p->cannot_change_mode) {
+            p->document.document.quirks_mode = true;
+        }
+    }
+    p->insert_mode = BEFORE_HTML;
+    process(p, t); //reprocess
 }
 
 void before_html(parser * p, token t) {
     switch (t.type) {
         case DOCTYPE: 
-            //Parse error, ignore
+            LOG_ERROR("Unexpected doctype token in before_html state");
             break;
         case COMMENT:
             insert_comment(t.comment.data, &p->document, p->arena);
@@ -388,36 +476,38 @@ void before_html(parser * p, token t) {
                 break;
             }
         case START_TAG:
-            {
-            string tag_name = *opt_unwrap(&t.start_tag.name, string, &String(""));
+            string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
             if (s_equal_c(tag_name, "html")) {
-                //create an element
-                //  document
-                //      -> this
-                //then add this to open elem stack
+                node * elem = create_element_for_token(t, String("html"), &p->document, p->arena);
+                *push(&p->open_elem_stack, p->arena) = *elem;
                 p->insert_mode = BEFORE_HEAD;
             } else {
-                //TODO: same as default
-            }
+                goto _default;
             }
             break;
         case END_TAG: 
-            {
-            string tag_name = *opt_unwrap(&t.end_tag.name, string, &String(""));
-            if (s_equal_c(tag_name, "head")
-                || s_equal_c(tag_name, "body")
-                || s_equal_c(tag_name, "html")
-                || s_equal_c(tag_name, "br")) {
-                //TODO: same as default
+            string end_tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
+            if (s_equal_c(end_tag_name, "head")
+                || s_equal_c(end_tag_name, "body")
+                || s_equal_c(end_tag_name, "html")
+                || s_equal_c(end_tag_name, "br")) {
+                goto _default;
             } else {
                 //Parse error, ignore
             }
-            }
             break;
         default:
-            //create element, then reprocess token
-            p->insert_mode = BEFORE_HEAD;
+            goto _default;
     }
+
+    return;
+_default:
+    //TODO: create element
+    node * elem = create_element_for_token(t, String("html"), &p->document, p->arena);
+    *push(&p->document.children, p->arena) = *elem;
+    *push(&p->open_elem_stack, p->arena) = *elem;
+    p->insert_mode = BEFORE_HEAD;
+    process(p, t); //reprocess
 }
 
 void before_head(parser * p, token t) {
@@ -429,50 +519,51 @@ void before_head(parser * p, token t) {
                 || t.character.data == '\n') {
                 //ignore
             } else {
-                //TODO: same as default
+                goto _default;
             }
             break;
 
         case COMMENT:
-            //TODO: insert a comment
+            insert_comment(t.comment.data, &p->document, p->arena);
             break;
 
         case DOCTYPE:
-            //TODO: Parse error. Ignore
+            LOG_ERROR("DOCTYPE token in before_head state");
             break;
 
         case START_TAG:
-            {
-                string tag_name = *opt_unwrap(&t.start_tag.name, string, &String(""));
-                if (s_equal_c(tag_name, "html")) {
-                    in_body(p, t);
-                } else if (s_equal_c(tag_name, "head")) {
-                    //TODO: insert html element, set pointer
-                    p->insert_mode = IN_HEAD;
-                } else {
-                    //TODO: same as default
-                }
+            string start_tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
+            if (s_equal_c(start_tag_name, "html")) {
+                in_body(p, t);
+            } else if (s_equal_c(start_tag_name, "head")) {
+                //TODO: insert html element, set pointer
+                p->insert_mode = IN_HEAD;
+            } else {
+                goto _default;
             }
             break;
 
         case END_TAG:
-            {
-                string tag_name = *opt_unwrap(&t.end_tag.name, string, &String(""));
-                if (s_equal_c(tag_name, "head")
-                    || s_equal_c(tag_name, "body")
-                    || s_equal_c(tag_name, "html")
-                    || s_equal_c(tag_name, "br")) {
-                    //TODO: same as default
-                } else {
-                    //Parse error, ignore
-                }
+            string end_tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
+            if (s_equal_c(end_tag_name, "head")
+                || s_equal_c(end_tag_name, "body")
+                || s_equal_c(end_tag_name, "html")
+                || s_equal_c(end_tag_name, "br")) {
+                goto _default;
+            } else {
+                //Parse error, ignore
+                LOG_ERROR("End tag token in before_head state besides head, body, html, or br");
             }
             break;
 
         default:
-            //TODO: new elem, set head pointer
-            p->insert_mode = IN_HEAD;
+            goto _default;
     }
+
+    return;
+_default:
+    //TODO: new elem, set head pointer
+    p->insert_mode = IN_HEAD;
 }
 
 void in_head(parser * p, token t) {
@@ -484,83 +575,87 @@ void in_head(parser * p, token t) {
                 || t.character.data == '\n') {
                 //TODO: insert the character
             } else {
-                //TODO: same as default
+                goto _default;
             }
             break;
         case COMMENT:
-            //TODO: insert comment
+            insert_comment(t.comment.data, &p->document, p->arena);
             break;
         case DOCTYPE:
-            //PARSE Error: ignore
+            LOG_ERROR("Doctype token in in_head state");
             break;
         case START_TAG:
-            {
-                string tag_name = *opt_unwrap(&t.start_tag.name, string, &String(""));
-                if (s_equal_c(tag_name, "html")) {
-                    in_body(p, t);
-                } else if (s_equal_c(tag_name, "base")
-                        || s_equal_c(tag_name, "basefont")
-                        || s_equal_c(tag_name, "bgsound")
-                        || s_equal_c(tag_name, "link")) {
-                    //TODO: insert html element
-                    //pop node stack
-                    //ack self-closing
-                } else if (s_equal_c(tag_name, "meta")) {
-                    //TODO: insert html element
-                    //pop node stack
-                    //ack self-closing
-                    //OTHERWISE do the meta stuff
-                } else if (s_equal_c(tag_name, "title")) {
-                    //RCDATA alg
-                } else if (s_equal_c(tag_name, "noscript")
-                        || s_equal_c(tag_name, "noframes")
-                        || s_equal_c(tag_name, "style")) {
-                    //RAWTEXT alg
-                } else if (s_equal_c(tag_name, "script")) {
-                    //TODO:
-                } else if (s_equal_c(tag_name, "template")) {
-                    //TODO:
-                } else if (s_equal_c(tag_name, "head")) {
-                    //Parse error, ignore
-                } else {
-                    //same as default
-                }
+            string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
+            if (s_equal_c(tag_name, "html")) {
+                in_body(p, t);
+            } else if (s_equal_c(tag_name, "base")
+                    || s_equal_c(tag_name, "basefont")
+                    || s_equal_c(tag_name, "bgsound")
+                    || s_equal_c(tag_name, "link")) {
+                //TODO: insert html element
+                //pop node stack
+                //ack self-closing
+            } else if (s_equal_c(tag_name, "meta")) {
+                //TODO: insert html element
+                //pop node stack
+                //ack self-closing
+                //OTHERWISE do the meta stuff
+            } else if (s_equal_c(tag_name, "title")) {
+                //RCDATA alg
+            } else if (s_equal_c(tag_name, "noscript")
+                    || s_equal_c(tag_name, "noframes")
+                    || s_equal_c(tag_name, "style")) {
+                //RAWTEXT alg
+            } else if (s_equal_c(tag_name, "script")) {
+                //TODO:
+            } else if (s_equal_c(tag_name, "template")) {
+                //TODO:
+            } else if (s_equal_c(tag_name, "head")) {
+                //Parse error, ignore
+            } else {
+                goto _default;
             }
             break;
 
         case END_TAG:
             {
-                string tag_name = *opt_unwrap(&t.end_tag.name, string, &String(""));
+                string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
                 if (s_equal_c(tag_name, "head")) {
                     //pop node
                     p->insert_mode = AFTER_HEAD;
                 } else if (s_equal_c(tag_name, "body")
                     || s_equal_c(tag_name, "html")
                     || s_equal_c(tag_name, "br")) {
-                    //TODO: same as default
+                    goto _default;
                 } else if (s_equal_c(tag_name, "template")) {
                     //TODO:
                 } else {
                     //Parse error, ignore
+                    LOG_ERROR("End tag token in in_head state besides head, body, html, br, or template");
                 }
             }
             break;
 
         default:
-            //TODO: pop head node off of stack
-            p->insert_mode = AFTER_HEAD;
-            //TODO: reprocess token
+            goto _default;
     }
+
+    return;
+_default:
+    //TODO: pop head node off of stack
+    p->insert_mode = AFTER_HEAD;
+    process(p, t); //reprocess
 }
 
 void in_head_noscript(parser * p, token t) {
     switch (t.type) {
         case DOCTYPE: 
             //parse error, ignore
+            LOG_ERROR("Doctype token in in_head_noscript state");
             break;
         case START_TAG: 
             {
-                string tag_name = *opt_unwrap(&t.start_tag.name, string, &String(""));
+                string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
                 if (s_equal_c(tag_name, "html")) {
                     in_body(p, t);
                 } else if (s_equal_c(tag_name, "basefont")
@@ -573,19 +668,21 @@ void in_head_noscript(parser * p, token t) {
                 } else if (s_equal_c(tag_name, "head")
                         || s_equal_c(tag_name, "noscript")) {
                     //parse error, ignore
+                    LOG_ERROR("Unexpected start tag token in in_head_noscript state");
                 }
             }
             break;
         case END_TAG:
             {
-                string tag_name = *opt_unwrap(&t.end_tag.name, string, &String(""));
+                string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
                 if (s_equal_c(tag_name, "noscript")) {
                     //pop noscript from stack
                     p->insert_mode = IN_HEAD;
                 } else if (s_equal_c(tag_name, "br")) {
-                    //TODO: default
+                    goto _default;
                 } else {
                     //parse error, ignore
+                    LOG_ERROR("Unexpected end tag token in in_head_noscript state");
                 }
             }
             break;
@@ -604,11 +701,14 @@ void in_head_noscript(parser * p, token t) {
             in_head(p, t);
             break;
         default:
-            //parse error
-            //pop current noscript elem
-            p->insert_mode = IN_HEAD;
-            //reprocess token
+            goto _default;
     }
+    return;
+_default:
+    //parse error
+    //pop current noscript elem
+    p->insert_mode = IN_HEAD;
+    //reprocess token
 }
 
 void after_head(parser * p, token t) {
@@ -621,18 +721,19 @@ void after_head(parser * p, token t) {
                 || t.character.data == ' ') {
                 //insert character
             } else {
-                //goto default
+                goto _default;
             }
             break;
         case COMMENT:
-            //TODO: insert comment
+            insert_comment(t.comment.data, &p->document, p->arena);
             break;
         case DOCTYPE:
             //parse error, ignore
+            LOG_ERROR("Unexpected doctype token in after_head state");
             break;
         case START_TAG: 
             {
-                string tag_name = *opt_unwrap(&t.start_tag.name, string, &String(""));
+                string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
                 if (s_equal_c(tag_name, "html")) {
                     in_body(p, t);
                 } else if (s_equal_c(tag_name, "body")) { 
@@ -668,23 +769,26 @@ void after_head(parser * p, token t) {
             break;
         case END_TAG: 
             {
-                string tag_name = *opt_unwrap(&t.end_tag.name, string, &String(""));
+                string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
                 if (s_equal_c(tag_name, "template")) {
                     in_head(p, t);
                 } else if (s_equal_c(tag_name, "body")
                         || s_equal_c(tag_name, "html")
                         || s_equal_c(tag_name, "br")) {
-                    //TODO: default
+                    goto _default;
                 } else {
                     //parse error, ignore
                 }
             }
             break;
         default:
-            //insert body start tag elem
-            p->insert_mode = IN_BODY;
-            //TODO: reprocess token
+            goto _default;
     }
+    return;
+_default:
+    //insert body start tag elem
+    p->insert_mode = IN_BODY;
+    process(p, t); //reprocess
 }
 
 void in_body(parser * p, token t) {
@@ -693,6 +797,7 @@ void in_body(parser * p, token t) {
             switch (t.character.data) {
                 case '\0':
                     /* parse error, ignore */
+                    LOG_ERROR("Unexpected NULL character token in in_body state");
                     break;
 
                 case '\t':
@@ -712,14 +817,17 @@ void in_body(parser * p, token t) {
             break;
         case COMMENT:
             //TODO: insert comment
+            insert_comment(t.comment.data, &p->document, p->arena);
             break;
         case DOCTYPE:
             //parse error, ignore
+            LOG_ERROR("Unexpected DOCTYPE token in in_body state");
             break;
         case START_TAG: {
-                string tag_name = *opt_unwrap(&t.start_tag.name, string, &String(""));
+                string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
                 if (s_equal_c(tag_name, "html")) {
                     //parse error
+                    LOG_ERROR("Unexpected html start tag token in in_body state");
                     //TODO: if template in open elements, ignore,
                     //else add each attribute that is not already present
                     //to the token on top of the open elements stack
@@ -736,13 +844,18 @@ void in_body(parser * p, token t) {
                     in_head(p, t);
                 } else if (s_equal_c(tag_name, "body")) {
                     //parse error
-                    //if stack_size == 1 || stack[2] != body || stack.has(template)
-                    //  then ignore
-                    //else 
-                    p->frameset_ok = false;
-                    //  then add not present attrs to current elem on stack
+                    LOG_ERROR("Unexpected body start tag token in in_body state");
+                    if ((p->open_elem_stack.len == 1)
+                            || p->open_elem_stack.data[1].type != HTML_BODY
+                            || stack_has_c(p->open_elem_stack, "template")) {
+                        //then ignore
+                    } else {
+                        p->frameset_ok = false;
+                        //  then add not present attrs to current elem on stack
+                    }
                 } else if (s_equal_c(tag_name, "frameset")) {
                     //parse error
+                    LOG_ERROR("Unexpected frameset start tag token in in_body state");
                     //if stack_size == 1 || stack[2] != body
                     //  then ignore
                     //else if frameset_ok == false
@@ -871,7 +984,7 @@ void in_body(parser * p, token t) {
             }
             break;
         case END_TAG: {
-                string tag_name = *opt_unwrap(&t.end_tag.name, string, &String(""));
+                string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
                 if (s_equal_c(tag_name, "template")) {
                     in_head(p, t);
                 } else if (s_equal_c(tag_name, "body")) {
@@ -881,6 +994,7 @@ void in_body(parser * p, token t) {
                     //      dd dt li optgroup option p rb rp rt rtc tbody td 
                     //      tfoot th thead tr body html
                     //  then parse error
+                    LOG_ERROR("Unexpected body end tag in in_body state");
                     p->insert_mode = AFTER_BODY;
                 } else if (s_equal_c(tag_name, "html")) {
                     //if !stack.has(body)
@@ -889,6 +1003,7 @@ void in_body(parser * p, token t) {
                     //      dd dt li optgroup option p rb rp rt rtc tbody td 
                     //      tfoot th thead tr body html
                     //  then parse error
+                    LOG_ERROR("Unexpected html end tag in in_body state");
                     p->insert_mode = AFTER_BODY;
                     process(p, t); //reprocess
                 } else if (s_equal_c(tag_name, "address")
