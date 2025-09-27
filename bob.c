@@ -1,4 +1,6 @@
 //bob can build it
+// cc bob.c -o bob.out
+// ./bob.out
 #include <stdlib.h>
 #include <string.h>
 #define FICKIT_IMPL
@@ -129,9 +131,96 @@ char ** get_files(char ** dirs, int (*compare)(const char *), arena * ptrs, aren
     return src_files.data;
 }
 
+int compare_age(char * file_a, char * file_b) {
+    struct stat b_stat;
+    int bfd = open(file_b, O_RDONLY);
+    int res = fstat(bfd, &b_stat);
+    if (res != 0) {
+        perror("file_b fstat");
+        close(bfd);
+        return -1;
+    }
+    close(bfd);
+
+    struct stat a_stat;
+    int afd = open(file_a, O_RDONLY);
+    res = fstat(afd, &a_stat);
+    if (res != 0) {
+        perror("file_a fstat");
+        close(afd);
+        return 1;
+    }
+    close(afd);
+
+    return a_stat.st_mtime - b_stat.st_mtime;
+}
+
+void bob_bootstrap(char * bob_name, char * bob_cc, char ** bob_flags) {
+    command c = {0};
+    arena a = arena_init(1024);
+
+    if (compare_age(bob_name, "./bob.c") < 0) {
+        printf("Bootstrapping bob:\n");
+        printf("--------------------------------------------------------------------------------\n");
+
+        *push(&c, &a) = "/bin/mv";
+        *push(&c, &a) = bob_name;
+        *push(&c, &a) = "bob.old";
+        *push(&c, &a) = NULL;
+        print_command(c);
+        if (!run(&c, NULL, NULL)) {
+            printf("Failed to move bob\n");
+            exit(1);
+        }
+
+        *push(&c, &a) = bob_cc;
+        for_each (bob_flags, iter) {
+            *push(&c, &a) = *iter;
+        }
+        *push(&c, &a) = "./bob.c";
+        *push(&c, &a) = "-o";
+        *push(&c, &a) = bob_name;
+        *push(&c, &a) = NULL;
+        print_command(c);
+        if (!run(&c, NULL, NULL)) {
+            *push(&c, &a) = "/bin/mv";
+            *push(&c, &a) = "bob.old";
+            *push(&c, &a) = bob_name;
+            *push(&c, &a) = NULL;
+            print_command(c);
+            if (!run(&c, NULL, NULL)) {
+                printf("Failed to move bob.old\n");
+                exit(1);
+            }
+
+            printf("Failed to bootrap bob\n");
+            exit(1);
+        }
+        printf("Successfully bootstrapped bob\n");
+        printf("--------------------------------------------------------------------------------\n");
+
+        *push(&c, &a) = bob_name;
+        *push(&c, &a) = NULL;
+        if (!run(&c, NULL, NULL)) {
+            *push(&c, &a) = "/bin/mv";
+            *push(&c, &a) = "bob.old";
+            *push(&c, &a) = bob_name;
+            *push(&c, &a) = NULL;
+            print_command(c);
+            if (!run(&c, NULL, NULL)) {
+                printf("Failed to move bob.old\n");
+                exit(1);
+            }
+
+            printf("Failed to run bob.out after rebuild\n");
+            exit(1);
+        }
+
+        exit(0);
+    }
+}
+
 int main(int argc, char * argv[]) {
-    arena a = arena_init(4096 * 16);
-    arena b = arena_init(4096 * 16);
     char * cc = "/bin/gcc";
     char * cc_flags[] = {
         "-std=c23",
@@ -144,6 +233,10 @@ int main(int argc, char * argv[]) {
         "-fsanitize-recover=undefined",
         NULL
     };
+    bob_bootstrap(argv[0], cc, cc_flags);
+
+    arena a = arena_init(4096 * 16);
+    arena b = arena_init(4096 * 16);
     char * src_dirs[] = {
         "./",
         "./lexer/",
@@ -162,155 +255,107 @@ int main(int argc, char * argv[]) {
 
     char ** src_files = get_files(src_dirs, src_file_cmp, &a, &b);
     char ** target_files = get_files(src_dirs, target_file_cmp, &a, &b);
+    struct {
+        char ** data;
+        size len;
+        size cap;
+    } built_files = {0};
 
     command c = {0};
     pids p = {0};
     arena pid_buf = arena_init(sizeof(int) * 256);
 
-    struct stat exec_stat;
-    int efd = open("./bob.out", O_RDONLY);
-    int res = fstat(efd, &exec_stat);
-    if (res != 0) {
-        perror("exec fstat");
-        exit(1);
-    }
-    close(efd);
-
-    struct stat src_stat;
-    int sfd = open("./bob.c", O_RDONLY);
-    res = fstat(sfd, &src_stat);
-    if (res != 0) {
-        perror("src fstat");
-        exit(1);
-    }
-    close(sfd);
-
-    if (exec_stat.st_mtime < src_stat.st_mtime) {
-        *push(&c, &a) = "/bin/mv";
-        *push(&c, &a) = "bob.out";
-        *push(&c, &a) = "bob.old";
-        *push(&c, &a) = NULL;
-        print_command(c);
-        if (!run(&c, NULL, NULL)) {
-            printf("Failed to move bob\n");
-            exit(1);
-        }
-
-        *push(&c, &a) = cc;
-        for_each (cc_flags, iter) {
-            *push(&c, &a) = *iter;
-        }
-        for_each (inc_flags, iter) {
-            *push(&c, &a) = *iter;
-        }
-        *push(&c, &a) = "./bob.c";
-        *push(&c, &a) = "-o";
-        *push(&c, &a) = "./bob.out";
-        *push(&c, &a) = NULL;
-        print_command(c);
-        if (!run(&c, NULL, NULL)) {
-            *push(&c, &a) = "/bin/mv";
-            *push(&c, &a) = "bob.old";
-            *push(&c, &a) = "bob.out";
-            *push(&c, &a) = NULL;
-            print_command(c);
-            if (!run(&c, NULL, NULL)) {
-                printf("Failed to move bob.old\n");
-                exit(1);
-            }
-
-            printf("Failed to bootrap bob\n");
-            exit(1);
-        }
-
-        *push(&c, &a) = "./bob.out";
-        *push(&c, &a) = NULL;
-        if (!run(&c, NULL, NULL)) {
-            *push(&c, &a) = "/bin/mv";
-            *push(&c, &a) = "bob.old";
-            *push(&c, &a) = "bob.out";
-            *push(&c, &a) = NULL;
-            print_command(c);
-            if (!run(&c, NULL, NULL)) {
-                printf("Failed to move bob.old\n");
-                exit(1);
-            }
-
-            printf("Failed to run bob.out after rebuild\n");
-            exit(1);
-        }
-
-        exit(0);
-    }
-
-
     for_each (src_files, src_iter) {
-        *push(&c, &a) = cc;
+        char * target_obj = object_of(*src_iter, &b);
+        if (compare_age(*src_iter, target_obj) > 0) {
+            *push(&c, &a) = cc;
 
-        for_each (cc_flags, iter) {
-            *push(&c, &a) = *iter;
-        }
-        for (char ** iter = inc_flags; *iter != NULL; iter++) {
-            *push(&c, &a) = *iter;
-        }
-        *push(&c, &a) = "-c";
-        *push(&c, &a) = *src_iter;
-        *push(&c, &a) = "-o";
-        *push(&c, &a) = object_of(*src_iter, &b);
-        *push(&c, &a) = NULL;
+            for_each (cc_flags, iter) {
+                *push(&c, &a) = *iter;
+            }
+            for (char ** iter = inc_flags; *iter != NULL; iter++) {
+                *push(&c, &a) = *iter;
+            }
+            *push(&c, &a) = "-c";
+            *push(&c, &a) = *src_iter;
+            *push(&c, &a) = "-o";
+            *push(&c, &a) = object_of(*src_iter, &b);
+            *push(&c, &a) = NULL;
 
-        print_command(c);
-        int res = run(&c, &p, &pid_buf);
-        if (res == -1) {
-            printf("Failed to build\n");
+            print_command(c);
+            int res = run(&c, &p, &pid_buf);
+            if (res == -1) {
+                printf("Failed to build\n");
+            }
+            *push(&built_files, &b) = target_obj;
         }
     }
 
     for_each (target_files, target) {
-        *push(&c, &a) = cc;
+        char * target_obj = object_of(*target, &b);
+        if (compare_age(*target, target_obj) > 0) {
+            *push(&c, &a) = cc;
 
-        for_each (cc_flags, iter) {
-            *push(&c, &a) = *iter;
-        }
-        for (char ** iter = inc_flags; *iter != NULL; iter++) {
-            *push(&c, &a) = *iter;
-        }
-        *push(&c, &a) = "-c";
-        *push(&c, &a) = *target;
-        *push(&c, &a) = "-o";
-        *push(&c, &a) = object_of(*target, &b);
-        *push(&c, &a) = NULL;
+            for_each (cc_flags, iter) {
+                *push(&c, &a) = *iter;
+            }
+            for (char ** iter = inc_flags; *iter != NULL; iter++) {
+                *push(&c, &a) = *iter;
+            }
+            *push(&c, &a) = "-c";
+            *push(&c, &a) = *target;
+            *push(&c, &a) = "-o";
+            *push(&c, &a) = object_of(*target, &b);
+            *push(&c, &a) = NULL;
 
-        print_command(c);
-        int res = run(&c, &p, &pid_buf);
-        if (res == -1) {
-            printf("Failed to build\n");
+            print_command(c);
+            int res = run(&c, &p, &pid_buf);
+            if (res == -1) {
+                printf("Failed to build\n");
+            }
+            *push(&built_files, &b) = target_obj;
         }
     }
     await_all(&p);
 
     for_each(target_files, target) {
-        *push(&c, &a) = cc;
-        for_each (cc_flags, iter) {
-            *push(&c, &a) = *iter;
-        }
-        *push(&c, &a) = "-o";
-        *push(&c, &a) = target_of(*target, &b);
-        for_each (linker_flags, iter) {
-            *push(&c, &a) = *iter;
-        }
-        for_each (src_files, src_iter) {
-            //ok to mutate now since compiling is done
-            *push(&c, &a) = object_of(*src_iter, &b);
-        }
-        *push(&c, &a) = object_of(*target, &b);
-        *push(&c, &a) = NULL;
+        char * target_obj = target_of(*target, &b);
+        if (compare_age(*target, target_obj) > 0) {
+            *push(&c, &a) = cc;
+            for_each (cc_flags, iter) {
+                *push(&c, &a) = *iter;
+            }
+            *push(&c, &a) = "-o";
+            *push(&c, &a) = target_of(*target, &b);
+            for_each (linker_flags, iter) {
+                *push(&c, &a) = *iter;
+            }
+            for_each (src_files, src_iter) {
+                //ok to mutate now since compiling is done
+                *push(&c, &a) = object_of(*src_iter, &b);
+            }
+            *push(&c, &a) = object_of(*target, &b);
+            *push(&c, &a) = NULL;
 
-        print_command(c);
-        int res = run(&c, &p, &pid_buf);
-        if (res == -1) {
-            printf("Failed to build: %s\n", *target);
+            print_command(c);
+            int res = run(&c, &p, &pid_buf);
+            if (res == -1) {
+                printf("Failed to build: %s\n", *target);
+            }
+            *push(&built_files, &b) = target_obj;
         }
     }
     await_all(&p);
+    *push(&built_files, &b) = NULL;
+    
+    printf("--------------------------------------------------------------------------------\n");
+    if (built_files.len == 1) {
+        printf("No Files Changed\n");
+    } else {
+        printf("Successfully built:\n");
+        for_each(built_files.data, file) {
+            printf("\t%s\n", *file);
+        }
+    }
+    printf("--------------------------------------------------------------------------------\n");
 }
