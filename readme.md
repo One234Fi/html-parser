@@ -1,11 +1,28 @@
-Project Goal
-    To implement a program that consumes html files or an html input stream and 
-    outputs a text representation of a dom tree or metadata about the input 
-    depending on what flags are passed in
+# A work in progress html parser
 
-Definition of done
-    Conformance with the HTML web-standard
-    
-What will not be done
-    Scripting will not be supported
-    XML syntax will not be supported
+## Build
+``` sh
+cc bob.c -o bob
+./bob
+```
+
+To change the build configuration, bob.c can be modified directly. Bob 
+will automatically detect that he has been changed, and recompile himself
+before compiling the program the next time you run him.
+
+
+## Usage
+The main program is built as 'main.out' by default.
+``` sh
+./main.out [options] <filepath>
+```
+The default invocation will print all content in a given html file (IE: strip
+text out from tags).
+
+| options | |
+| --- | --- |
+| --parse-urls | instead of printing all content, the program will print all hrefs |
+
+
+## Tests
+Each set of tests are in their own executable named '<test name>_tst.out'.
