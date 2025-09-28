@@ -149,7 +149,7 @@ void * alloc(arena * a, size stride, size align, size count) {
     size available = a->end - a->pos - padding;
     if (available < 0 || count > available / stride) {
         if (a->debug_name != NULL) {
-            printf("%s", a->debug_name);
+            fprintf(stderr, "%s", a->debug_name);
         } 
         die("Arena OOM");
     }

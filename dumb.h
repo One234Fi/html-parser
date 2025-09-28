@@ -21,4 +21,5 @@ struct node_stack {
 
 node * parse_tree(lexer * l, arena * node_pool, arena stack_buf, arena str_buf);
 int print_content(node ** n, void * unused);
+int print_link(node **n, void * unused);
 int tree_for_each(node ** root, int (* callback)(node ** n, void * arg), void * arg);

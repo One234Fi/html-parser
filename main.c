@@ -15,9 +15,22 @@
 
 
 int main(int argc, char* argv[]) {
-    fprintf(stdout, "Passed %d arguments\n", argc);
+    fprintf(stderr, "Passed %d arguments\n", argc);
 
-    if (argc > 1) {
+    bool parse_links = false;
+    char * file_path = NULL;
+
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "--parse-links") == 0) {
+            parse_links = true;
+        } else if (!file_path) {
+            file_path = argv[i];
+        } else if (parse_links && file_path) {
+            break;
+        }
+    }
+
+    if (file_path) {
         char * backing = malloc(1 << 18);
         assert(backing != NULL);
         arena global = arena_wrap(1 << 18, backing);
@@ -27,10 +40,14 @@ int main(int argc, char* argv[]) {
         scratch1.debug_name = "stack mem";
         scratch2.debug_name = "string mem";
 
-        lexer lex = lexer_init(argv[1], &global);
+        lexer lex = lexer_init(file_path, &global);
         node * tree = parse_tree(&lex, &global, scratch1, scratch2);
-        tree_for_each(&tree, print_content, NULL);
-        printf("\nEOF\n");
+        if (parse_links) {
+            tree_for_each(&tree, print_link, NULL);
+        } else {
+            tree_for_each(&tree, print_content, NULL);
+        }
+        fprintf(stderr, "\nEOF\n");
         free(backing);
     }
 

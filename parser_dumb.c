@@ -15,6 +15,7 @@ struct nodes {
 struct node {
     string content;
     string name;
+    string href;
     nodes children;
 };
 
@@ -29,9 +30,16 @@ int print_content(node ** n, void * unused) {
     return 1;
 }
 
+int print_link(node **n, void * unused) {
+    if ((*n)->href.len > 0) {
+        printf("%.*s\n", (int) (*n)->href.len, (*n)->href.data);
+    }
+    return 1;
+}
+
 int tree_for_each(node ** root, int (* callback)(node ** n, void * arg), void * arg) {
     if (root == NULL || *root == NULL) {
-        printf("NULL ROOT");
+        fprintf(stderr, "NULL ROOT");
         return 1;
     }
     void * stack_buf = malloc(sizeof(node *) * 512);
@@ -72,13 +80,28 @@ node * parse_tree(lexer * l, arena * node_pool, arena stack_buf, arena str_buf) 
 
             case START_TAG:
                 if (t.tag.self_closing) {
-                    //noop
+                    node * n = new(node_pool, node);
+                    n->name = *opt_unwrap(&t.tag.name, string, &String(""));
+                    for (size i = 0; i < t.attrs.len; i++) {
+                        if (s_equal_c(t.attrs.data[i].name, "href")) {
+                            n->href = t.attrs.data[i].value;
+                            break;
+                        }
+                    }
+                    node * top = open_elements.data[open_elements.len-1];
+                    *push(&top->children, node_pool) = n;
                 } else {
                     node * n = new(node_pool, node);
                     *push(&open_elements, &stack_buf) = n;
                     n->name = *opt_unwrap(&t.tag.name, string, &String(""));
-                    printf("start->name: %.*s\n", (int) n->name.len, n->name.data);
-                    //printf("pushing %.*s\n", (int)((string *) t.tag.name.val)->len, ((string *) t.tag.name.val)->data);
+                    for (size i = 0; i < t.attrs.len; i++) {
+                        if (s_equal_c(t.attrs.data[i].name, "href")) {
+                            n->href = t.attrs.data[i].value;
+                            break;
+                        }
+                    }
+                    fprintf(stderr, "start->name: %.*s\n", (int) n->name.len, n->name.data);
+                    fprintf(stderr, "pushing %.*s\n", (int)((string *) t.tag.name.val)->len, ((string *) t.tag.name.val)->data);
                 }
                 break;
 
@@ -86,15 +109,15 @@ node * parse_tree(lexer * l, arena * node_pool, arena stack_buf, arena str_buf) 
                 node * pos = open_elements.data[open_elements.len - 2];
                 node * top = open_elements.data[--open_elements.len];
 
-                printf("pos->name: %.*s\n", (int) pos->name.len, pos->name.data);
-                printf("top->name: %.*s\n", (int) top->name.len, top->name.data);
+                fprintf(stderr, "pos->name: %.*s\n", (int) pos->name.len, pos->name.data);
+                fprintf(stderr, "top->name: %.*s\n", (int) top->name.len, top->name.data);
 
-                //printf("%.*s", (int) content_builder.len, content_builder.data);
+                fprintf(stderr, "%.*s", (int) content_builder.len, content_builder.data);
                 top->content = s_clone((string){content_builder.data, content_builder.len, 0}, node_pool);
                 content_builder.len = 0;
 
                 *push(&pos->children, node_pool) = top;
-                //printf("popping %.*s\n", (int)((string *) t.tag.name.val)->len, ((string *) t.tag.name.val)->data);
+                fprintf(stderr, "popping %.*s\n", (int)((string *) t.tag.name.val)->len, ((string *) t.tag.name.val)->data);
                 break;
 
             case COMMENT:
@@ -117,7 +140,7 @@ node * parse_tree(lexer * l, arena * node_pool, arena stack_buf, arena str_buf) 
 
     while (open_elements.len > 1) {
         *push(&root->children, node_pool) = open_elements.data[--open_elements.len];
-        printf("PUSHING UNFINISHED ELEM: %.*s\n", 
+        fprintf(stderr, "PUSHING UNFINISHED ELEM: %.*s\n", 
                 (int) open_elements.data[open_elements.len]->name.len,
                 open_elements.data[open_elements.len]->name.data);
     }
