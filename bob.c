@@ -40,12 +40,22 @@ int run(command * c, pids * p, arena * a) {
     return waitpid(pid, NULL, 0) == -1 ? 0 : 1;
 }
 
-void await_all(pids * p) {
-    //FIXME: this is kind of dumb but it works well enough for now
+int await_all(pids * p) {
     while (p->len > 0) {
-        wait(NULL);
+        int status = 0;
+        int pid = wait(&status);
         p->len--;
+        if (pid == -1) {
+            return 0;
+        }
+        if (WIFEXITED(status)) {
+            status = WEXITSTATUS(status);
+            if (status) {
+                return !status;
+            }
+        }
     }
+    return 1;
 }
 
 void print_command(command c) {
@@ -138,7 +148,7 @@ int compare_age(char * file_a, char * file_b) {
     if (res != 0) {
         perror("file_b fstat");
         close(bfd);
-        return -1;
+        return 1;
     }
     close(bfd);
 
@@ -148,7 +158,7 @@ int compare_age(char * file_a, char * file_b) {
     if (res != 0) {
         perror("file_a fstat");
         close(afd);
-        return 1;
+        return -1;
     }
     close(afd);
 
@@ -316,7 +326,10 @@ int main(int argc, char * argv[]) {
             *push(&built_files, &b) = target_obj;
         }
     }
-    await_all(&p);
+    if (!await_all(&p)) {
+        printf("Failed to build\n");
+        exit(1);
+    }
 
     for_each(target_files, target) {
         char * target_obj = target_of(*target, &b);
@@ -345,7 +358,10 @@ int main(int argc, char * argv[]) {
             *push(&built_files, &b) = target_obj;
         }
     }
-    await_all(&p);
+    if (!await_all(&p)) {
+        printf("Failed to build\n");
+        exit(1);
+    }
     *push(&built_files, &b) = NULL;
     
     printf("--------------------------------------------------------------------------------\n");
