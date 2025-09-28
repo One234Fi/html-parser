@@ -81,7 +81,7 @@ node * parse_tree(lexer * l, arena * node_pool, arena stack_buf, arena str_buf) 
             case START_TAG:
                 if (t.tag.self_closing) {
                     node * n = new(node_pool, node);
-                    n->name = *opt_unwrap(&t.tag.name, string, &String(""));
+                    n->name = t.tag.name;
                     for (size i = 0; i < t.attrs.len; i++) {
                         if (s_equal_c(t.attrs.data[i].name, "href")) {
                             n->href = t.attrs.data[i].value;
@@ -93,7 +93,7 @@ node * parse_tree(lexer * l, arena * node_pool, arena stack_buf, arena str_buf) 
                 } else {
                     node * n = new(node_pool, node);
                     *push(&open_elements, &stack_buf) = n;
-                    n->name = *opt_unwrap(&t.tag.name, string, &String(""));
+                    n->name = t.tag.name;
                     for (size i = 0; i < t.attrs.len; i++) {
                         if (s_equal_c(t.attrs.data[i].name, "href")) {
                             n->href = t.attrs.data[i].value;
@@ -101,7 +101,7 @@ node * parse_tree(lexer * l, arena * node_pool, arena stack_buf, arena str_buf) 
                         }
                     }
                     fprintf(stderr, "start->name: %.*s\n", (int) n->name.len, n->name.data);
-                    fprintf(stderr, "pushing %.*s\n", (int)((string *) t.tag.name.val)->len, ((string *) t.tag.name.val)->data);
+                    fprintf(stderr, "pushing %.*s\n", (int)t.tag.name.len, t.tag.name.data);
                 }
                 break;
 
@@ -117,7 +117,7 @@ node * parse_tree(lexer * l, arena * node_pool, arena stack_buf, arena str_buf) 
                 content_builder.len = 0;
 
                 *push(&pos->children, node_pool) = top;
-                fprintf(stderr, "popping %.*s\n", (int)((string *) t.tag.name.val)->len, ((string *) t.tag.name.val)->data);
+                fprintf(stderr, "popping %.*s\n", (int)t.tag.name.len, t.tag.name.data);
                 break;
 
             case COMMENT:

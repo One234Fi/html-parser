@@ -159,18 +159,17 @@ void tree_construction_phase(parser * p, token input) {
 void process(parser * p, token t); //FIXME
 void tree_construction_dispatcher(parser * p, token input) {
     node * n = get_adjusted_current_node(p);
-    string start_tag_name = *opt_unwrap(&input.tag.name, string, &String(""));
     if (p->open_elem_stack.len <= 0
         || (in_html_namespace(*n))
         || (is_mathml_text_integration_point(n)
             && input.type == START_TAG
-            && (!s_equal_c(start_tag_name, "mglyph"))
-            && (!s_equal_c(start_tag_name, "malignmark")))
+            && (!s_equal_c(input.tag.name, "mglyph"))
+            && (!s_equal_c(input.tag.name, "malignmark")))
         || (is_mathml_text_integration_point(n)
             && input.type == CHARACTER)
         || (is_mathml_annotation_xml_element(*n)
             && input.type == START_TAG
-            && (s_equal_c(start_tag_name, "svg")))
+            && (s_equal_c(input.tag.name, "svg")))
         || (is_html_integration_point(*n)
             && input.type == START_TAG) 
         || (is_html_integration_point(*n)
@@ -370,7 +369,7 @@ node * create_element_for_token(token t, string namespace, node * target, arena 
     // ...
 
     node * document = target->node_document;
-    string local_name = *opt_unwrap(&t.tag.name, string, &String(""));
+    string local_name = t.tag.name;
     char * is = NULL;
     bool will_execute_script = false;
     void * registry = NULL;
@@ -476,8 +475,7 @@ void before_html(parser * p, token t) {
                 break;
             }
         case START_TAG:
-            string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
-            if (s_equal_c(tag_name, "html")) {
+            if (s_equal_c(t.tag.name, "html")) {
                 node * elem = create_element_for_token(t, String("html"), &p->document, p->arena);
                 *push(&p->open_elem_stack, p->arena) = *elem;
                 p->insert_mode = BEFORE_HEAD;
@@ -486,11 +484,10 @@ void before_html(parser * p, token t) {
             }
             break;
         case END_TAG: 
-            string end_tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
-            if (s_equal_c(end_tag_name, "head")
-                || s_equal_c(end_tag_name, "body")
-                || s_equal_c(end_tag_name, "html")
-                || s_equal_c(end_tag_name, "br")) {
+            if (s_equal_c(t.tag.name, "head")
+                || s_equal_c(t.tag.name, "body")
+                || s_equal_c(t.tag.name, "html")
+                || s_equal_c(t.tag.name, "br")) {
                 goto _default;
             } else {
                 //Parse error, ignore
@@ -532,10 +529,9 @@ void before_head(parser * p, token t) {
             break;
 
         case START_TAG:
-            string start_tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
-            if (s_equal_c(start_tag_name, "html")) {
+            if (s_equal_c(t.tag.name, "html")) {
                 in_body(p, t);
-            } else if (s_equal_c(start_tag_name, "head")) {
+            } else if (s_equal_c(t.tag.name, "head")) {
                 //TODO: insert html element, set pointer
                 p->insert_mode = IN_HEAD;
             } else {
@@ -544,11 +540,10 @@ void before_head(parser * p, token t) {
             break;
 
         case END_TAG:
-            string end_tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
-            if (s_equal_c(end_tag_name, "head")
-                || s_equal_c(end_tag_name, "body")
-                || s_equal_c(end_tag_name, "html")
-                || s_equal_c(end_tag_name, "br")) {
+            if (s_equal_c(t.tag.name, "head")
+                || s_equal_c(t.tag.name, "body")
+                || s_equal_c(t.tag.name, "html")
+                || s_equal_c(t.tag.name, "br")) {
                 goto _default;
             } else {
                 //Parse error, ignore
@@ -585,32 +580,31 @@ void in_head(parser * p, token t) {
             LOG_ERROR("Doctype token in in_head state");
             break;
         case START_TAG:
-            string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
-            if (s_equal_c(tag_name, "html")) {
+            if (s_equal_c(t.tag.name, "html")) {
                 in_body(p, t);
-            } else if (s_equal_c(tag_name, "base")
-                    || s_equal_c(tag_name, "basefont")
-                    || s_equal_c(tag_name, "bgsound")
-                    || s_equal_c(tag_name, "link")) {
+            } else if (s_equal_c(t.tag.name, "base")
+                    || s_equal_c(t.tag.name, "basefont")
+                    || s_equal_c(t.tag.name, "bgsound")
+                    || s_equal_c(t.tag.name, "link")) {
                 //TODO: insert html element
                 //pop node stack
                 //ack self-closing
-            } else if (s_equal_c(tag_name, "meta")) {
+            } else if (s_equal_c(t.tag.name, "meta")) {
                 //TODO: insert html element
                 //pop node stack
                 //ack self-closing
                 //OTHERWISE do the meta stuff
-            } else if (s_equal_c(tag_name, "title")) {
+            } else if (s_equal_c(t.tag.name, "title")) {
                 //RCDATA alg
-            } else if (s_equal_c(tag_name, "noscript")
-                    || s_equal_c(tag_name, "noframes")
-                    || s_equal_c(tag_name, "style")) {
+            } else if (s_equal_c(t.tag.name, "noscript")
+                    || s_equal_c(t.tag.name, "noframes")
+                    || s_equal_c(t.tag.name, "style")) {
                 //RAWTEXT alg
-            } else if (s_equal_c(tag_name, "script")) {
+            } else if (s_equal_c(t.tag.name, "script")) {
                 //TODO:
-            } else if (s_equal_c(tag_name, "template")) {
+            } else if (s_equal_c(t.tag.name, "template")) {
                 //TODO:
-            } else if (s_equal_c(tag_name, "head")) {
+            } else if (s_equal_c(t.tag.name, "head")) {
                 //Parse error, ignore
             } else {
                 goto _default;
@@ -619,15 +613,14 @@ void in_head(parser * p, token t) {
 
         case END_TAG:
             {
-                string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
-                if (s_equal_c(tag_name, "head")) {
+                if (s_equal_c(t.tag.name, "head")) {
                     //pop node
                     p->insert_mode = AFTER_HEAD;
-                } else if (s_equal_c(tag_name, "body")
-                    || s_equal_c(tag_name, "html")
-                    || s_equal_c(tag_name, "br")) {
+                } else if (s_equal_c(t.tag.name, "body")
+                    || s_equal_c(t.tag.name, "html")
+                    || s_equal_c(t.tag.name, "br")) {
                     goto _default;
-                } else if (s_equal_c(tag_name, "template")) {
+                } else if (s_equal_c(t.tag.name, "template")) {
                     //TODO:
                 } else {
                     //Parse error, ignore
@@ -655,18 +648,17 @@ void in_head_noscript(parser * p, token t) {
             break;
         case START_TAG: 
             {
-                string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
-                if (s_equal_c(tag_name, "html")) {
+                if (s_equal_c(t.tag.name, "html")) {
                     in_body(p, t);
-                } else if (s_equal_c(tag_name, "basefont")
-                        || s_equal_c(tag_name, "bgsound")
-                        || s_equal_c(tag_name, "link")
-                        || s_equal_c(tag_name, "meta")
-                        || s_equal_c(tag_name, "noframes")
-                        || s_equal_c(tag_name, "style")) {
+                } else if (s_equal_c(t.tag.name, "basefont")
+                        || s_equal_c(t.tag.name, "bgsound")
+                        || s_equal_c(t.tag.name, "link")
+                        || s_equal_c(t.tag.name, "meta")
+                        || s_equal_c(t.tag.name, "noframes")
+                        || s_equal_c(t.tag.name, "style")) {
                     in_head(p, t);
-                } else if (s_equal_c(tag_name, "head")
-                        || s_equal_c(tag_name, "noscript")) {
+                } else if (s_equal_c(t.tag.name, "head")
+                        || s_equal_c(t.tag.name, "noscript")) {
                     //parse error, ignore
                     LOG_ERROR("Unexpected start tag token in in_head_noscript state");
                 }
@@ -674,11 +666,10 @@ void in_head_noscript(parser * p, token t) {
             break;
         case END_TAG:
             {
-                string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
-                if (s_equal_c(tag_name, "noscript")) {
+                if (s_equal_c(t.tag.name, "noscript")) {
                     //pop noscript from stack
                     p->insert_mode = IN_HEAD;
-                } else if (s_equal_c(tag_name, "br")) {
+                } else if (s_equal_c(t.tag.name, "br")) {
                     goto _default;
                 } else {
                     //parse error, ignore
@@ -733,32 +724,31 @@ void after_head(parser * p, token t) {
             break;
         case START_TAG: 
             {
-                string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
-                if (s_equal_c(tag_name, "html")) {
+                if (s_equal_c(t.tag.name, "html")) {
                     in_body(p, t);
-                } else if (s_equal_c(tag_name, "body")) { 
+                } else if (s_equal_c(t.tag.name, "body")) { 
                     //insert elem
                     //set frameset_ok to "not_ok"
                     p->frameset_ok = false;
                     p->insert_mode = IN_BODY;
-                } else if (s_equal_c(tag_name, "frameset")) { 
+                } else if (s_equal_c(t.tag.name, "frameset")) { 
                     //insert elem
                     p->insert_mode = IN_FRAMESET;
-                } else if (s_equal_c(tag_name, "base")
-                        || s_equal_c(tag_name, "basefont")
-                        || s_equal_c(tag_name, "bgsound")
-                        || s_equal_c(tag_name, "link")
-                        || s_equal_c(tag_name, "meta")
-                        || s_equal_c(tag_name, "noframes")
-                        || s_equal_c(tag_name, "script")
-                        || s_equal_c(tag_name, "style")
-                        || s_equal_c(tag_name, "template")
-                        || s_equal_c(tag_name, "title")) {
+                } else if (s_equal_c(t.tag.name, "base")
+                        || s_equal_c(t.tag.name, "basefont")
+                        || s_equal_c(t.tag.name, "bgsound")
+                        || s_equal_c(t.tag.name, "link")
+                        || s_equal_c(t.tag.name, "meta")
+                        || s_equal_c(t.tag.name, "noframes")
+                        || s_equal_c(t.tag.name, "script")
+                        || s_equal_c(t.tag.name, "style")
+                        || s_equal_c(t.tag.name, "template")
+                        || s_equal_c(t.tag.name, "title")) {
                     //parse error
                     //put head->pointer on open elem stack
                     in_head(p, t);
                     //remove head->pointer from stack
-                } else if (s_equal_c(tag_name, "head")) {
+                } else if (s_equal_c(t.tag.name, "head")) {
                     //parse error, ignore
                 } else {
                     //insert body start tag elem
@@ -769,12 +759,11 @@ void after_head(parser * p, token t) {
             break;
         case END_TAG: 
             {
-                string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
-                if (s_equal_c(tag_name, "template")) {
+                if (s_equal_c(t.tag.name, "template")) {
                     in_head(p, t);
-                } else if (s_equal_c(tag_name, "body")
-                        || s_equal_c(tag_name, "html")
-                        || s_equal_c(tag_name, "br")) {
+                } else if (s_equal_c(t.tag.name, "body")
+                        || s_equal_c(t.tag.name, "html")
+                        || s_equal_c(t.tag.name, "br")) {
                     goto _default;
                 } else {
                     //parse error, ignore
@@ -824,25 +813,24 @@ void in_body(parser * p, token t) {
             LOG_ERROR("Unexpected DOCTYPE token in in_body state");
             break;
         case START_TAG: {
-                string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
-                if (s_equal_c(tag_name, "html")) {
+                if (s_equal_c(t.tag.name, "html")) {
                     //parse error
                     LOG_ERROR("Unexpected html start tag token in in_body state");
                     //TODO: if template in open elements, ignore,
                     //else add each attribute that is not already present
                     //to the token on top of the open elements stack
-                } else if (s_equal_c(tag_name, "base")
-                        || s_equal_c(tag_name, "basefont")
-                        || s_equal_c(tag_name, "bgsound")
-                        || s_equal_c(tag_name, "link")
-                        || s_equal_c(tag_name, "meta")
-                        || s_equal_c(tag_name, "noframes")
-                        || s_equal_c(tag_name, "script")
-                        || s_equal_c(tag_name, "style")
-                        || s_equal_c(tag_name, "template")
-                        || s_equal_c(tag_name, "title")) {
+                } else if (s_equal_c(t.tag.name, "base")
+                        || s_equal_c(t.tag.name, "basefont")
+                        || s_equal_c(t.tag.name, "bgsound")
+                        || s_equal_c(t.tag.name, "link")
+                        || s_equal_c(t.tag.name, "meta")
+                        || s_equal_c(t.tag.name, "noframes")
+                        || s_equal_c(t.tag.name, "script")
+                        || s_equal_c(t.tag.name, "style")
+                        || s_equal_c(t.tag.name, "template")
+                        || s_equal_c(t.tag.name, "title")) {
                     in_head(p, t);
-                } else if (s_equal_c(tag_name, "body")) {
+                } else if (s_equal_c(t.tag.name, "body")) {
                     //parse error
                     LOG_ERROR("Unexpected body start tag token in in_body state");
                     if ((p->open_elem_stack.len == 1)
@@ -853,7 +841,7 @@ void in_body(parser * p, token t) {
                         p->frameset_ok = false;
                         //  then add not present attrs to current elem on stack
                     }
-                } else if (s_equal_c(tag_name, "frameset")) {
+                } else if (s_equal_c(t.tag.name, "frameset")) {
                     //parse error
                     LOG_ERROR("Unexpected frameset start tag token in in_body state");
                     //if stack_size == 1 || stack[2] != body
@@ -865,40 +853,40 @@ void in_body(parser * p, token t) {
                     //  pop all from stack until 'html'
                     //  insert html
                     p->insert_mode = IN_FRAMESET;
-                } else if (s_equal_c(tag_name, "address")
-                        || s_equal_c(tag_name, "article")
-                        || s_equal_c(tag_name, "aside")
-                        || s_equal_c(tag_name, "blockquote")
-                        || s_equal_c(tag_name, "center")
-                        || s_equal_c(tag_name, "details")
-                        || s_equal_c(tag_name, "dialog")
-                        || s_equal_c(tag_name, "dir")
-                        || s_equal_c(tag_name, "div")
-                        || s_equal_c(tag_name, "dl")
-                        || s_equal_c(tag_name, "fieldset")
-                        || s_equal_c(tag_name, "figcaption")
-                        || s_equal_c(tag_name, "figure")
-                        || s_equal_c(tag_name, "footer")
-                        || s_equal_c(tag_name, "header")
-                        || s_equal_c(tag_name, "hgroup")
-                        || s_equal_c(tag_name, "main")
-                        || s_equal_c(tag_name, "menu")
-                        || s_equal_c(tag_name, "nav")
-                        || s_equal_c(tag_name, "ol")
-                        || s_equal_c(tag_name, "p")
-                        || s_equal_c(tag_name, "search")
-                        || s_equal_c(tag_name, "section")
-                        || s_equal_c(tag_name, "summary")
-                        || s_equal_c(tag_name, "ul")) {
+                } else if (s_equal_c(t.tag.name, "address")
+                        || s_equal_c(t.tag.name, "article")
+                        || s_equal_c(t.tag.name, "aside")
+                        || s_equal_c(t.tag.name, "blockquote")
+                        || s_equal_c(t.tag.name, "center")
+                        || s_equal_c(t.tag.name, "details")
+                        || s_equal_c(t.tag.name, "dialog")
+                        || s_equal_c(t.tag.name, "dir")
+                        || s_equal_c(t.tag.name, "div")
+                        || s_equal_c(t.tag.name, "dl")
+                        || s_equal_c(t.tag.name, "fieldset")
+                        || s_equal_c(t.tag.name, "figcaption")
+                        || s_equal_c(t.tag.name, "figure")
+                        || s_equal_c(t.tag.name, "footer")
+                        || s_equal_c(t.tag.name, "header")
+                        || s_equal_c(t.tag.name, "hgroup")
+                        || s_equal_c(t.tag.name, "main")
+                        || s_equal_c(t.tag.name, "menu")
+                        || s_equal_c(t.tag.name, "nav")
+                        || s_equal_c(t.tag.name, "ol")
+                        || s_equal_c(t.tag.name, "p")
+                        || s_equal_c(t.tag.name, "search")
+                        || s_equal_c(t.tag.name, "section")
+                        || s_equal_c(t.tag.name, "summary")
+                        || s_equal_c(t.tag.name, "ul")) {
                     //if stack.has(p)
                     //  close p
                     //insert html elem for token
-                } else if (s_equal_c(tag_name, "h1")
-                        || s_equal_c(tag_name, "h2")
-                        || s_equal_c(tag_name, "h3")
-                        || s_equal_c(tag_name, "h4")
-                        || s_equal_c(tag_name, "h5")
-                        || s_equal_c(tag_name, "h6")) {
+                } else if (s_equal_c(t.tag.name, "h1")
+                        || s_equal_c(t.tag.name, "h2")
+                        || s_equal_c(t.tag.name, "h3")
+                        || s_equal_c(t.tag.name, "h4")
+                        || s_equal_c(t.tag.name, "h5")
+                        || s_equal_c(t.tag.name, "h6")) {
                     //if stack.has(p)
                     //  close p
                     //
@@ -907,8 +895,8 @@ void in_body(parser * p, token t) {
                     //  pop current_node
                     //
                     //insert html_elem for token
-                } else if (s_equal_c(tag_name, "pre")
-                        || s_equal_c(tag_name, "listing")) {
+                } else if (s_equal_c(t.tag.name, "pre")
+                        || s_equal_c(t.tag.name, "listing")) {
                     //if stack.has(p)
                     //  then close p
                     //
@@ -918,7 +906,7 @@ void in_body(parser * p, token t) {
                     //  then get_token() //ignore
                     //
                     //framset_ok = false
-                } else if (s_equal_c(tag_name, "form")) {
+                } else if (s_equal_c(t.tag.name, "form")) {
                     //if form_elem_pointer != NULL and !stack.has(template)
                     //  then parse error, ignore
                     //else
@@ -926,7 +914,7 @@ void in_body(parser * p, token t) {
                     //      then close p
                     //  insert html_elem for token
                     //  form_elem_pointer = newly_created_elem
-                } else if (s_equal_c(tag_name, "li")) {
+                } else if (s_equal_c(t.tag.name, "li")) {
                     p->frameset_ok = false;
                     //node = current_node
                     //while node is li
@@ -943,8 +931,8 @@ void in_body(parser * p, token t) {
                     //DONE:
                     //if stack.has(p) close p
                     //insert html_elem for token
-                } else if (s_equal_c(tag_name, "dd")
-                        || s_equal_c(tag_name, "dt")) {
+                } else if (s_equal_c(t.tag.name, "dd")
+                        || s_equal_c(t.tag.name, "dt")) {
                     p->frameset_ok = false;
                     //node = current_node
                     //LOOP:
@@ -968,11 +956,11 @@ void in_body(parser * p, token t) {
                     //DONE:
                     //if stack.has(p) close p
                     //insert html_elem for token
-                } else if (s_equal_c(tag_name, "plaintext")) {
+                } else if (s_equal_c(t.tag.name, "plaintext")) {
                     //if stack.has(p) close p
                     //insert html elem for token
                     p->lex.state = PLAINTEXT_STATE;
-                } else if (s_equal_c(tag_name, "button")) {
+                } else if (s_equal_c(t.tag.name, "button")) {
                     //if stack.has button
                     //  parse error
                     //  generate implied end_tags
@@ -984,10 +972,9 @@ void in_body(parser * p, token t) {
             }
             break;
         case END_TAG: {
-                string tag_name = *opt_unwrap(&t.tag.name, string, &String(""));
-                if (s_equal_c(tag_name, "template")) {
+                if (s_equal_c(t.tag.name, "template")) {
                     in_head(p, t);
-                } else if (s_equal_c(tag_name, "body")) {
+                } else if (s_equal_c(t.tag.name, "body")) {
                     //if !stack.has(body)
                     //  then parse error, ignore
                     //else if stack.size > 0 && !stack.has 
@@ -996,7 +983,7 @@ void in_body(parser * p, token t) {
                     //  then parse error
                     LOG_ERROR("Unexpected body end tag in in_body state");
                     p->insert_mode = AFTER_BODY;
-                } else if (s_equal_c(tag_name, "html")) {
+                } else if (s_equal_c(t.tag.name, "html")) {
                     //if !stack.has(body)
                     //  then parse error, ignore
                     //else if stack.size > 0 && !stack.has 
@@ -1006,41 +993,41 @@ void in_body(parser * p, token t) {
                     LOG_ERROR("Unexpected html end tag in in_body state");
                     p->insert_mode = AFTER_BODY;
                     process(p, t); //reprocess
-                } else if (s_equal_c(tag_name, "address")
-                        || s_equal_c(tag_name, "article")
-                        || s_equal_c(tag_name, "aside")
-                        || s_equal_c(tag_name, "blockquote")
-                        || s_equal_c(tag_name, "button")
-                        || s_equal_c(tag_name, "center")
-                        || s_equal_c(tag_name, "details")
-                        || s_equal_c(tag_name, "dialog")
-                        || s_equal_c(tag_name, "dir")
-                        || s_equal_c(tag_name, "div")
-                        || s_equal_c(tag_name, "dl")
-                        || s_equal_c(tag_name, "fieldset")
-                        || s_equal_c(tag_name, "figcaption")
-                        || s_equal_c(tag_name, "figure")
-                        || s_equal_c(tag_name, "footer")
-                        || s_equal_c(tag_name, "header")
-                        || s_equal_c(tag_name, "hgroup")
-                        || s_equal_c(tag_name, "listing")
-                        || s_equal_c(tag_name, "main")
-                        || s_equal_c(tag_name, "menu")
-                        || s_equal_c(tag_name, "nav")
-                        || s_equal_c(tag_name, "ol")
-                        || s_equal_c(tag_name, "pre")
-                        || s_equal_c(tag_name, "search")
-                        || s_equal_c(tag_name, "section")
-                        || s_equal_c(tag_name, "summary")
-                        || s_equal_c(tag_name, "ul")) {
-                    //if !stack.has(tag_name)
+                } else if (s_equal_c(t.tag.name, "address")
+                        || s_equal_c(t.tag.name, "article")
+                        || s_equal_c(t.tag.name, "aside")
+                        || s_equal_c(t.tag.name, "blockquote")
+                        || s_equal_c(t.tag.name, "button")
+                        || s_equal_c(t.tag.name, "center")
+                        || s_equal_c(t.tag.name, "details")
+                        || s_equal_c(t.tag.name, "dialog")
+                        || s_equal_c(t.tag.name, "dir")
+                        || s_equal_c(t.tag.name, "div")
+                        || s_equal_c(t.tag.name, "dl")
+                        || s_equal_c(t.tag.name, "fieldset")
+                        || s_equal_c(t.tag.name, "figcaption")
+                        || s_equal_c(t.tag.name, "figure")
+                        || s_equal_c(t.tag.name, "footer")
+                        || s_equal_c(t.tag.name, "header")
+                        || s_equal_c(t.tag.name, "hgroup")
+                        || s_equal_c(t.tag.name, "listing")
+                        || s_equal_c(t.tag.name, "main")
+                        || s_equal_c(t.tag.name, "menu")
+                        || s_equal_c(t.tag.name, "nav")
+                        || s_equal_c(t.tag.name, "ol")
+                        || s_equal_c(t.tag.name, "pre")
+                        || s_equal_c(t.tag.name, "search")
+                        || s_equal_c(t.tag.name, "section")
+                        || s_equal_c(t.tag.name, "summary")
+                        || s_equal_c(t.tag.name, "ul")) {
+                    //if !stack.has(t.tag.name)
                     //  parse error, ignore
                     //else
                     //  generate implied end_tags
-                    //  if current_node != tag_name
+                    //  if current_node != t.tag.name
                     //      parse error
-                    //  pop from stack until tag_name is popped
-                } else if (s_equal_c(tag_name, "form")) {
+                    //  pop from stack until t.tag.name is popped
+                } else if (s_equal_c(t.tag.name, "form")) {
                     //if !stack.has(template)
                     //  node = form_ptr || null
                     //  form_ptr = null
@@ -1056,7 +1043,7 @@ void in_body(parser * p, token t) {
                     //  if current_node != form
                     //      then parse error
                     //  pop elements until form has been popped
-                } else if (s_equal_c(tag_name, "p")) {
+                } else if (s_equal_c(t.tag.name, "p")) {
                 }
             }
             break;

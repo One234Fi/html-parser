@@ -55,7 +55,7 @@ string token_to_string(token t, arena * a) {
 
         case START_TAG: {
                 string ret = String("<");
-                ret = s_cat(ret, *opt_get(&t.tag.name, string), a);
+                ret = s_cat(ret, t.tag.name, a);
                 for (size i = 0; i < t.attrs.len; i++) {
                     ret = s_cat(ret, String(" "), a);
                     ret = s_cat(ret, t.attrs.data[i].name, a);
@@ -70,7 +70,7 @@ string token_to_string(token t, arena * a) {
 
         case END_TAG: {
                 string ret = String("</");
-                ret = s_cat(ret, *opt_get(&t.tag.name, string), a);
+                ret = s_cat(ret, t.tag.name, a);
                 ret = s_cat(ret, String(">"), a);
                 return ret;
             } 
@@ -260,21 +260,16 @@ void append_to_current_tag_token_comment_data(lexer * lexer, int c) {
     }
 }
 
-
-
-
 bool current_token_is_valid(lexer * lexer) {
     if (lexer->last_start_tag_name.exists 
             && lexer->current_token.type == END_TAG
-            && lexer->current_token.tag.name.exists) {
+            && lexer->current_token.tag.name.len > 0) {
         string start_tag = * (string *) lexer->last_start_tag_name.val;
-        string end_tag = * (string *) lexer->current_token.tag.name.val;
+        string end_tag = lexer->current_token.tag.name;
         return s_equal(start_tag, end_tag);
     }
     return false;
 }
-
-
 
 void set_current_token_identifier(lexer * lexer, const char * val, size len) {
     if (lexer->current_token.type != DOCTYPE) {
@@ -291,15 +286,12 @@ void set_current_token_identifier(lexer * lexer, const char * val, size len) {
     }
 }
 
-
-
 void append_to_current_tag_token_identifier(lexer * lexer, int c) {
     if (lexer->current_token.type != DOCTYPE) {
         LOG_ERROR("Token of type "xstr(lexer->current_token.type)" does not have an identifier");
         return;
     }
 }
-
 
 bool input_system_empty(input_system * s) {
     return s->len <= 0;
@@ -335,8 +327,6 @@ void normalize_newlines(string * sb) {
 
     *sb = temp;
 }
-
-
 
 input_system input_system_init(const char* filename, arena * a) {
     input_system s = {0};
@@ -388,13 +378,11 @@ int input_system_consume(input_system * s) {
     return c;
 }
 
-
 void input_system_reconsume(input_system * s) {
     assert(s->front > s->buffer.data);
     s->front--;
     s->len++;
 }
-
 
 string input_system_peekn(input_system * s, int n, arena * a) {
     string st = {0};
@@ -412,7 +400,6 @@ char input_system_peek(input_system * s) {
     return *s->front;
 }
 
-
 void set_self_closing_tag_for_current_token(lexer * lexer, bool b) {
     if (lexer->current_token.type == START_TAG) {
         lexer->current_token.tag.self_closing = true;
@@ -424,10 +411,9 @@ void set_self_closing_tag_for_current_token(lexer * lexer, bool b) {
 }
 
 void append_to_current_tag_token_name(lexer * lexer, int c) {
-    if (lexer->current_token.type == START_TAG) {
-        opt_str_append(&lexer->current_token.tag.name, lexer->arena, c);
-    } else if (lexer->current_token.type == END_TAG) {
-        opt_str_append(&lexer->current_token.tag.name, lexer->arena, c);
+    if (lexer->current_token.type == START_TAG
+        || lexer->current_token.type == END_TAG) {
+        *push(&lexer->current_token.tag.name, lexer->arena) = c;
     } else if (lexer->current_token.type == DOCTYPE) {
         opt_str_append(&lexer->current_token.doctype.name, lexer->arena, c);
     } else {
@@ -470,7 +456,6 @@ void append_to_current_tag_token_attribute_value(lexer * lexer, int c) {
         LOG_ERROR("Token of type "xstr(p->current_token.type)" does not have a tag name");
     }
 }
-
 
 void set_doctype_token_force_quirks_flag(lexer * lexer, bool b) {
     if (lexer->current_token.type != DOCTYPE) {

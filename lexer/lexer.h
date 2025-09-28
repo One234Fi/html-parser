@@ -32,7 +32,7 @@ typedef struct {
 } token_attrs;
 
 typedef struct {
-    opt_str name;
+    string name;
     bool self_closing;
 } t_tag;
 
